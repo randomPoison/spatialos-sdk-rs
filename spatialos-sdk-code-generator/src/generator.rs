@@ -3,6 +3,7 @@ use crate::schema_bundle::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
+use t4rust_derive::*;
 
 fn get_package_path<'a>(
     package_names: &BTreeSet<Vec<String>>,
