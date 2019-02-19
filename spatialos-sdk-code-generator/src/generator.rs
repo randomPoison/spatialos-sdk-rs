@@ -1,5 +1,5 @@
 use heck::CamelCase;
-use schema_bundle::*;
+use crate::schema_bundle::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
