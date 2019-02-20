@@ -16,3 +16,6 @@ futures = "0.1.25"
 uuid = { version = "0.7", features = ["v4"] }
 structopt = "0.2.14"
 tap = "0.3.0"
+
+[build-dependencies]
+spatialos-sdk-code-generator = { path = "../spatialos-sdk-code-generator" }
