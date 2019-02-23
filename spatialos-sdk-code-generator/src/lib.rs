@@ -1,36 +1,54 @@
 use crate::schema_bundle::SchemaBundle;
-use std::path::{Path, PathBuf};
+use quote::quote;
 
-pub mod generator;
 pub mod schema_bundle;
 
-// TODO: Does it actually make sense to have this function do file I/O? Or should it
-// be given the already-loaded files? Or would there be a better way to abstract
-// over the two?
-//
-// TODO: Is there a better way to specify the list of input files?
-//
 // TODO: Create a proper error type to return.
-pub fn generate<P>(bundle: SchemaBundle) -> Result<Schema, Box<dyn std::error::Error>>
-where
-    P: AsRef<Path>,
-{
-    
+pub fn generate(bundle: SchemaBundle) -> Result<String, Box<dyn std::error::Error>> {
+    let bundle = bundle.v1.ok_or("Only v1 bundle is supported")?;
+    let null_span = proc_macro2::Span::call_site();
 
-    Ok(())
+    // TODO: Filter to only the components that are part of the crate that's currently
+    // being processed.
+    let components = bundle.component_definitions.iter().map(|component_def| {
+        // println!("Component identifier: {:?}", component_def.identifier);
+
+        let ident = syn::Ident::new(&component_def.identifier.name, null_span);
+
+        let fields = component_def.field_definitions.iter().map(|field_def| {
+            let ident = syn::Ident::new(&field_def.identifier.name, null_span);
+            let ty = &field_def.ty;
+            quote! {
+                pub #ident: #ty
+            }
+        });
+
+        quote! {
+            pub struct #ident {
+                #( #fields ),*
+            }
+        }
+    });
+
+    let result = quote! {
+        #( #components )*
+    }
+    .to_string();
+
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use std::str;
 
-    static TEST_BUNDLE: &[u8] = include_bytes!("../data/standard_library.json");
+    static TEST_BUNDLE: &[u8] = include_bytes!("../data/bundle.json");
 
     #[test]
     fn deserialize_bundle() {
         let contents = str::from_utf8(TEST_BUNDLE).unwrap();
-
-        crate::generate(vec![contents.into()], "out/test_generated.rs")
-            .expect("Code generation failed");
+        let bundle =
+            crate::schema_bundle::load_bundle(contents).expect("Failed to parse bundle contents");
+        let _ = crate::generate(bundle).expect("Code generation failed");
     }
 }

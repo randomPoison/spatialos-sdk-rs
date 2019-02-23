@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 
+use quote::{quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 
@@ -11,7 +12,7 @@ pub struct Identifier {
     pub path: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum PrimitiveType {
     Invalid = 0,
     Int32 = 1,
@@ -32,16 +33,54 @@ pub enum PrimitiveType {
     Bytes = 16,
 }
 
+impl ToTokens for PrimitiveType {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let ty = match self {
+            PrimitiveType::Invalid => panic!("Invalid primitive type!"),
+            PrimitiveType::Int32 | PrimitiveType::Sint32 | PrimitiveType::Sfixed32 => {
+                quote! { i32 }
+            }
+            PrimitiveType::Int64 | PrimitiveType::Sint64 | PrimitiveType::Sfixed64 => {
+                quote! { i64 }
+            }
+            PrimitiveType::Uint32 | PrimitiveType::Fixed32 => quote! { u32 },
+            PrimitiveType::Uint64 | PrimitiveType::Fixed64 => quote! { u64 },
+            PrimitiveType::Bool => quote! { bool },
+            PrimitiveType::Float => quote! { f32 },
+            PrimitiveType::Double => quote! { f64 },
+            PrimitiveType::String => quote! { String },
+            PrimitiveType::Bytes => quote! { Vec<u8> },
+
+            // TODO: More robust handling of crate names/paths.
+            PrimitiveType::EntityId => quote! { spatialos_sdk::worker::EntityId },
+        };
+
+        tokens.append_all(ty);
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TypeReference {
     pub qualified_name: String,
 }
 
+impl ToTokens for TypeReference {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append_all(quote! { foo::bar::Baz });
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct EnumReference {
     pub qualified_name: String,
+}
+
+impl ToTokens for EnumReference {
+    fn to_tokens(&self, _tokens: &mut proc_macro2::TokenStream) {
+        unimplemented!();
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -57,13 +96,21 @@ pub struct FieldReference {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ValueTypeReference {
-    #[serde(rename = "primitive")]
-    pub primitive_reference: Option<PrimitiveType>,
-    #[serde(rename = "enum")]
-    pub enum_reference: Option<EnumReference>,
-    #[serde(rename = "type")]
-    pub type_reference: Option<TypeReference>,
+#[serde(rename_all = "camelCase")]
+pub enum ValueTypeReference {
+    Primitive(PrimitiveType),
+    Enum(EnumReference),
+    Type(TypeReference),
+}
+
+impl ToTokens for ValueTypeReference {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            ValueTypeReference::Primitive(primitive) => primitive.to_tokens(tokens),
+            ValueTypeReference::Enum(enum_ty) => enum_ty.to_tokens(tokens),
+            ValueTypeReference::Type(ty) => ty.to_tokens(tokens),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -161,41 +208,71 @@ pub struct EnumDefinition {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FieldDefinition_SingularType {
-    #[serde(rename = "type")]
-    pub type_reference: ValueTypeReference,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct FieldDefinition_OptionType {
-    pub inner_type: ValueTypeReference,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct FieldDefinition_ListType {
-    pub inner_type: ValueTypeReference,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct FieldDefinition_MapType {
-    pub key_type: ValueTypeReference,
-    pub value_type: ValueTypeReference,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldDefinition {
     pub identifier: Identifier,
     pub field_id: u32,
     pub transient: bool,
-    pub singular_type: Option<FieldDefinition_SingularType>,
-    pub option_type: Option<FieldDefinition_OptionType>,
-    pub list_type: Option<FieldDefinition_ListType>,
-    pub map_type: Option<FieldDefinition_MapType>,
+    #[serde(flatten)]
+    pub ty: FieldTypeDefinition,
     pub annotations: Vec<Annotation>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum FieldTypeDefinition {
+    #[serde(rename = "singularType")]
+    #[serde(rename_all = "camelCase")]
+    Singular {
+        #[serde(rename = "type")]
+        ty: ValueTypeReference,
+    },
+
+    #[serde(rename = "optionType")]
+    #[serde(rename_all = "camelCase")]
+    Optional { inner_type: ValueTypeReference },
+
+    #[serde(rename = "listType")]
+    #[serde(rename_all = "camelCase")]
+    List { inner_type: ValueTypeReference },
+
+    #[serde(rename = "mapType")]
+    #[serde(rename_all = "camelCase")]
+    Map {
+        key_type: ValueTypeReference,
+        value_type: ValueTypeReference,
+    },
+}
+
+impl ToTokens for FieldTypeDefinition {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            FieldTypeDefinition::Singular { ty } => {
+                ty.to_tokens(tokens);
+            }
+
+            FieldTypeDefinition::Optional { inner_type } => {
+                tokens.append_all(quote! {
+                    Option<#inner_type>
+                });
+            }
+
+            FieldTypeDefinition::List { inner_type } => {
+                tokens.append_all(quote! {
+                    List<#inner_type>
+                });
+            }
+
+            FieldTypeDefinition::Map {
+                key_type,
+                value_type,
+            } => {
+                tokens.append_all(quote! {
+                    std::collections::BTreeMap<#key_type, #value_type>
+                });
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
