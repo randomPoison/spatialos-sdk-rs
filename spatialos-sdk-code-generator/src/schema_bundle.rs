@@ -67,7 +67,12 @@ pub struct TypeReference {
 
 impl ToTokens for TypeReference {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        tokens.append_all(quote! { foo::bar::Baz });
+        let path = self
+            .qualified_name
+            .split('.')
+            .collect::<Vec<_>>()
+            .join("::");
+        tokens.append_all(syn::parse_str::<proc_macro2::TokenStream>(&path));
     }
 }
 
