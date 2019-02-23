@@ -1,43 +1,36 @@
-use std::path::Path;
+use crate::schema_bundle::SchemaBundle;
+use std::path::{Path, PathBuf};
 
 pub mod generator;
 pub mod schema_bundle;
 
-pub fn generate<P, Q>(bundle_path: P, output_file: Q) -> Result<(), Box<dyn std::error::Error>>
+// TODO: Does it actually make sense to have this function do file I/O? Or should it
+// be given the already-loaded files? Or would there be a better way to abstract
+// over the two?
+//
+// TODO: Is there a better way to specify the list of input files?
+//
+// TODO: Create a proper error type to return.
+pub fn generate<P>(bundle: SchemaBundle) -> Result<Schema, Box<dyn std::error::Error>>
 where
     P: AsRef<Path>,
-    Q: AsRef<Path>,
 {
-    // Steps:
-    //
-    // 1. Find all schema files in dependencies. (cargo-spatial)
-    // 2. Run schema compiler to generate AST/bundle file. (cargo-spatial)
-    // 3. Generate code for schema files defined in the current crate.
-    unimplemented!("TODO: Implement code generation");
+    
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::generator;
-    use crate::schema_bundle;
     use std::str;
 
-    static TEST_BUNDLE: &[u8] = include_bytes!("../data/test.bundle.json");
+    static TEST_BUNDLE: &[u8] = include_bytes!("../data/standard_library.json");
 
     #[test]
     fn deserialize_bundle() {
         let contents = str::from_utf8(TEST_BUNDLE).unwrap();
 
-        let bundle = schema_bundle::load_bundle(&contents);
-        assert!(
-            bundle.is_ok(),
-            "Schema bundle contains an error: {:?}",
-            bundle.err().unwrap()
-        );
-        println!("Bundle contents: {:#?}", bundle);
-        println!(
-            "Generated code: {}",
-            generator::generate_code(bundle.unwrap())
-        );
+        crate::generate(vec![contents.into()], "out/test_generated.rs")
+            .expect("Code generation failed");
     }
 }
