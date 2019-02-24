@@ -303,7 +303,7 @@ impl ToTokens for FieldTypeDefinition {
 
             FieldTypeDefinition::List { inner_type } => {
                 tokens.append_all(quote! {
-                    List<#inner_type>
+                    Vec<#inner_type>
                 });
             }
 
