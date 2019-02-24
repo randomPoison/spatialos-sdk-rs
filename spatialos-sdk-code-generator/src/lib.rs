@@ -11,15 +11,11 @@ pub fn generate(
     let bundle = bundle.v1.as_ref().ok_or("Only v1 bundle is supported")?;
     let null_span = proc_macro2::Span::call_site();
 
-    // TODO: Filter to only the components that are part of the crate that's currently
-    // being processed.
     let components = bundle
         .component_definitions
         .iter()
         .filter(|def| def.identifier.qualified_name.starts_with(package))
         .map(|component_def| {
-            // println!("Component identifier: {:?}", component_def.identifier);
-
             let ident = syn::Ident::new(&component_def.identifier.name, null_span);
 
             let fields = component_def.field_definitions.iter().map(|field_def| {
@@ -37,8 +33,32 @@ pub fn generate(
             }
         });
 
+    let types = bundle
+        .type_definitions
+        .iter()
+        .filter(|def| def.identifier.qualified_name.starts_with(package))
+        .map(|type_def| {
+            let ident = syn::Ident::new(&type_def.identifier.name, null_span);
+
+            let fields = type_def.field_definitions.iter().map(|field_def| {
+                let ident = syn::Ident::new(&field_def.identifier.name, null_span);
+                let ty = &field_def.ty;
+                quote! {
+                    pub #ident: #ty
+                }
+            });
+
+            quote! {
+                pub struct #ident {
+                    #( #fields ),*
+                }
+            }
+        });
+
     let result = quote! {
         #( #components )*
+
+        #( #types )*
     }
     .to_string();
 
