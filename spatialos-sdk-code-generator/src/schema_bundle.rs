@@ -12,6 +12,31 @@ pub struct Identifier {
     pub path: Vec<String>,
 }
 
+impl Identifier {
+    /// Returns the subset of `path` that represents the package of the identifier.
+    ///
+    /// For example, if the qualified name of the item is "foo.bar.Baz", that would
+    /// mean that the item is named `Baz` and is in the package `foo.bar`. This
+    /// method would therefore return `["foo", "bar"]`.
+    pub fn package_path(&self) -> &[String] {
+        let first_non_lowercase = self
+            .path
+            .iter()
+            .position(|seg| !seg.chars().next().unwrap().is_lowercase())
+            .unwrap_or_else(|| self.path.len());
+        &self.path[..first_non_lowercase]
+    }
+
+    /// Returns the path elements for the item, converting elements to `snake_case`
+    /// as needed to ensure that they're valid Rust module identifiers.
+    pub fn module_path(&self) -> impl Iterator<Item = String> + '_ {
+        let len = self.path.len() - 1;
+        self.path[..len]
+            .iter()
+            .map(|seg| heck::SnekCase::to_snek_case(&**seg))
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum PrimitiveType {
     Invalid = 0,
@@ -327,11 +352,20 @@ pub struct ComponentDefinition_CommandDefinition {
 pub struct ComponentDefinition {
     pub identifier: Identifier,
     pub component_id: u32,
-    pub data_definition: Option<TypeReference>,
-    pub field_definitions: Vec<FieldDefinition>,
+    #[serde(flatten)]
+    pub data_definition: ComponentDataDefinition,
     pub event_definitions: Vec<ComponentDefinition_EventDefinition>,
     pub command_definitions: Vec<ComponentDefinition_CommandDefinition>,
     pub annotations: Vec<Annotation>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ComponentDataDefinition {
+    #[serde(rename = "fieldDefinitions")]
+    Inline(Vec<FieldDefinition>),
+
+    #[serde(rename = "dataDefinition")]
+    TypeReference(TypeReference),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -89,6 +89,91 @@
    },
    {
     "identifier": {
+     "qualifiedName": "example.CommandData.NestedType",
+     "name": "NestedType",
+     "path": [
+      "example",
+      "CommandData",
+      "NestedType"
+     ]
+    },
+    "fieldDefinitions": [
+     {
+      "identifier": {
+       "qualifiedName": "example.CommandData.NestedType.some_string",
+       "name": "some_string",
+       "path": [
+        "example",
+        "CommandData",
+        "NestedType",
+        "some_string"
+       ]
+      },
+      "fieldId": 1,
+      "transient": false,
+      "singularType": {
+       "type": {
+        "primitive": "String"
+       }
+      },
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   },
+   {
+    "identifier": {
+     "qualifiedName": "example.SomeData",
+     "name": "SomeData",
+     "path": [
+      "example",
+      "SomeData"
+     ]
+    },
+    "fieldDefinitions": [
+     {
+      "identifier": {
+       "qualifiedName": "example.SomeData.foo",
+       "name": "foo",
+       "path": [
+        "example",
+        "SomeData",
+        "foo"
+       ]
+      },
+      "fieldId": 1,
+      "transient": false,
+      "singularType": {
+       "type": {
+        "primitive": "String"
+       }
+      },
+      "annotations": []
+     },
+     {
+      "identifier": {
+       "qualifiedName": "example.SomeData.bar",
+       "name": "bar",
+       "path": [
+        "example",
+        "SomeData",
+        "bar"
+       ]
+      },
+      "fieldId": 2,
+      "transient": false,
+      "singularType": {
+       "type": {
+        "primitive": "Int32"
+       }
+      },
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   },
+   {
+    "identifier": {
      "qualifiedName": "improbable.WorkerAttributeSet",
      "name": "WorkerAttributeSet",
      "path": [
@@ -1151,6 +1236,42 @@
    },
    {
     "identifier": {
+     "qualifiedName": "example.SomeComponent",
+     "name": "SomeComponent",
+     "path": [
+      "example",
+      "SomeComponent"
+     ]
+    },
+    "componentId": 1001,
+    "dataDefinition": {
+     "qualifiedName": "example.SomeData"
+    },
+    "fieldDefinitions": [],
+    "eventDefinitions": [],
+    "commandDefinitions": [],
+    "annotations": []
+   },
+   {
+    "identifier": {
+     "qualifiedName": "example.AnotherComponent",
+     "name": "AnotherComponent",
+     "path": [
+      "example",
+      "AnotherComponent"
+     ]
+    },
+    "componentId": 1002,
+    "dataDefinition": {
+     "qualifiedName": "example.CommandData.NestedType"
+    },
+    "fieldDefinitions": [],
+    "eventDefinitions": [],
+    "commandDefinitions": [],
+    "annotations": []
+   },
+   {
+    "identifier": {
      "qualifiedName": "improbable.EntityAcl",
      "name": "EntityAcl",
      "path": [
@@ -1351,14 +1472,19 @@
     "line": 149,
     "column": 3
    },
+   "example.AnotherComponent": {
+    "filePath": "schema/example.schema",
+    "line": 38,
+    "column": 1
+   },
    "example.Example.x": {
     "filePath": "schema/example.schema",
-    "line": 12,
+    "line": 16,
     "column": 5
    },
    "example.Example.test_command": {
     "filePath": "schema/example.schema",
-    "line": 15,
+    "line": 19,
     "column": 5
    },
    "improbable.ComponentInterest.BoxConstraint": {
@@ -1391,25 +1517,35 @@
     "line": 83,
     "column": 3
    },
+   "example.CommandData.NestedType": {
+    "filePath": "schema/example.schema",
+    "line": 8,
+    "column": 5
+   },
    "improbable.ComponentInterest.BoxConstraint.center": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 155,
     "column": 5
-   },
-   "example.CommandData": {
-    "filePath": "schema/example.schema",
-    "line": 5,
-    "column": 1
    },
    "improbable.WorkerAttributeSet": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 6,
     "column": 1
    },
+   "example.CommandData": {
+    "filePath": "schema/example.schema",
+    "line": 5,
+    "column": 1
+   },
    "improbable.ComponentInterest.QueryConstraint": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 129,
     "column": 3
+   },
+   "example.SomeData.bar": {
+    "filePath": "schema/example.schema",
+    "line": 29,
+    "column": 5
    },
    "example.CommandData.value": {
     "filePath": "schema/example.schema",
@@ -1466,6 +1602,11 @@
     "line": 133,
     "column": 5
    },
+   "example.CommandData.NestedType.some_string": {
+    "filePath": "schema/example.schema",
+    "line": 9,
+    "column": 9
+   },
    "improbable.Vector3f.x": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/vector3.schema",
     "line": 4,
@@ -1506,6 +1647,11 @@
     "line": 46,
     "column": 3
    },
+   "example.SomeData": {
+    "filePath": "schema/example.schema",
+    "line": 27,
+    "column": 1
+   },
    "improbable.WorkerRequirementSet": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 24,
@@ -1516,14 +1662,14 @@
     "line": 9,
     "column": 1
    },
-   "improbable.WorkerAttributeSet.attribute": {
-    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
-    "line": 9,
-    "column": 3
-   },
    "improbable.ComponentInterest.SphereConstraint": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 144,
+    "column": 3
+   },
+   "improbable.WorkerAttributeSet.attribute": {
+    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
+    "line": 9,
     "column": 3
    },
    "improbable.EntityAcl": {
@@ -1548,7 +1694,7 @@
    },
    "example.CoolEnum.Bop": {
     "filePath": "schema/example.schema",
-    "line": 20,
+    "line": 34,
     "column": 5
    },
    "improbable.EntityAcl.read_acl": {
@@ -1563,7 +1709,7 @@
    },
    "example.CoolEnum.Bap": {
     "filePath": "schema/example.schema",
-    "line": 21,
+    "line": 35,
     "column": 5
    },
    "improbable.ComponentInterest.Query.full_snapshot_result": {
@@ -1579,6 +1725,16 @@
    "improbable.Interest": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 98,
+    "column": 1
+   },
+   "example.SomeData.foo": {
+    "filePath": "schema/example.schema",
+    "line": 28,
+    "column": 5
+   },
+   "example.SomeComponent": {
+    "filePath": "schema/example.schema",
+    "line": 22,
     "column": 1
    },
    "improbable.ComponentInterest.CylinderConstraint.radius": {
@@ -1606,15 +1762,15 @@
     "line": 134,
     "column": 5
    },
+   "example.Example": {
+    "filePath": "schema/example.schema",
+    "line": 13,
+    "column": 1
+   },
    "improbable.EdgeLength.y": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 71,
     "column": 3
-   },
-   "example.Example": {
-    "filePath": "schema/example.schema",
-    "line": 9,
-    "column": 1
    },
    "improbable.ComponentInterest.QueryConstraint.component_constraint": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
@@ -1623,12 +1779,12 @@
    },
    "example.Example.point": {
     "filePath": "schema/example.schema",
-    "line": 13,
+    "line": 17,
     "column": 5
    },
    "example.CoolEnum.Boop": {
     "filePath": "schema/example.schema",
-    "line": 19,
+    "line": 33,
     "column": 5
    },
    "improbable.Vector3d.z": {
@@ -1636,15 +1792,15 @@
     "line": 12,
     "column": 3
    },
-   "improbable.Coordinates.x": {
-    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
-    "line": 63,
-    "column": 3
-   },
    "improbable.ComponentInterest.SphereConstraint.radius": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 146,
     "column": 5
+   },
+   "improbable.Coordinates.x": {
+    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
+    "line": 63,
+    "column": 3
    },
    "improbable.Interest.component_interest": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
@@ -1653,7 +1809,7 @@
    },
    "example.CoolEnum": {
     "filePath": "schema/example.schema",
-    "line": 18,
+    "line": 32,
     "column": 1
    },
    "improbable.ComponentInterest.QueryConstraint.relative_box_constraint": {

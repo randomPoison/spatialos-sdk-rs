@@ -4,6 +4,15 @@ import "improbable/vector3.schema";
 
 type CommandData {
     int32 value = 1;
+
+    type NestedType {
+        string some_string = 1;
+
+        enum NestedEnum {
+            First = 1;
+            Second = 2;
+        }
+    }
 }
 
 component Example {
@@ -15,8 +24,23 @@ component Example {
     command CommandData test_command(CommandData);
 }
 
+component SomeComponent {
+    id = 1001;
+    data SomeData;
+}
+
+type SomeData {
+    string foo = 1;
+    int32 bar = 2;
+}
+
 enum CoolEnum {
     Boop = 1;
     Bop = 2;
     Bap = 3;
+}
+
+component AnotherComponent {
+    id = 1002;
+    data CommandData.NestedType;
 }
