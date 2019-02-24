@@ -14,3 +14,9 @@ component Example {
 
     command CommandData test_command(CommandData);
 }
+
+enum CoolEnum {
+    Boop = 1;
+    Bop = 2;
+    Bap = 3;
+}

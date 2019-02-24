@@ -55,10 +55,25 @@ pub fn generate(
             }
         });
 
+    let enums = bundle
+        .enum_definitions
+        .iter()
+        .filter(|def| def.identifier.qualified_name.starts_with(package))
+        .map(|enum_def| {
+            let ident = syn::Ident::new(&enum_def.identifier.name, null_span);
+            let values = &enum_def.value_definitions;
+
+            quote! {
+                pub enum #ident {
+                    #( #values ),*
+                }
+            }
+        });
+
     let result = quote! {
         #( #components )*
-
         #( #types )*
+        #( #enums )*
     }
     .to_string();
 

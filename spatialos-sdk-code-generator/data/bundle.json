@@ -1,6 +1,59 @@
 {
  "v1": {
-  "enumDefinitions": [],
+  "enumDefinitions": [
+   {
+    "identifier": {
+     "qualifiedName": "example.CoolEnum",
+     "name": "CoolEnum",
+     "path": [
+      "example",
+      "CoolEnum"
+     ]
+    },
+    "valueDefinitions": [
+     {
+      "identifier": {
+       "qualifiedName": "example.CoolEnum.Boop",
+       "name": "Boop",
+       "path": [
+        "example",
+        "CoolEnum",
+        "Boop"
+       ]
+      },
+      "value": 1,
+      "annotations": []
+     },
+     {
+      "identifier": {
+       "qualifiedName": "example.CoolEnum.Bop",
+       "name": "Bop",
+       "path": [
+        "example",
+        "CoolEnum",
+        "Bop"
+       ]
+      },
+      "value": 2,
+      "annotations": []
+     },
+     {
+      "identifier": {
+       "qualifiedName": "example.CoolEnum.Bap",
+       "name": "Bap",
+       "path": [
+        "example",
+        "CoolEnum",
+        "Bap"
+       ]
+      },
+      "value": 3,
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   }
+  ],
   "typeDefinitions": [
    {
     "identifier": {
@@ -1363,15 +1416,15 @@
     "line": 6,
     "column": 5
    },
-   "improbable.EdgeLength.z": {
-    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
-    "line": 72,
-    "column": 3
-   },
    "improbable.ComponentInterest.RelativeSphereConstraint.radius": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 160,
     "column": 5
+   },
+   "improbable.EdgeLength.z": {
+    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
+    "line": 72,
+    "column": 3
    },
    "improbable.Vector3f.z": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/vector3.schema",
@@ -1493,6 +1546,11 @@
     "line": 62,
     "column": 1
    },
+   "example.CoolEnum.Bop": {
+    "filePath": "schema/example.schema",
+    "line": 20,
+    "column": 5
+   },
    "improbable.EntityAcl.read_acl": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 40,
@@ -1502,6 +1560,11 @@
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 167,
     "column": 3
+   },
+   "example.CoolEnum.Bap": {
+    "filePath": "schema/example.schema",
+    "line": 21,
+    "column": 5
    },
    "improbable.ComponentInterest.Query.full_snapshot_result": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
@@ -1563,6 +1626,11 @@
     "line": 13,
     "column": 5
    },
+   "example.CoolEnum.Boop": {
+    "filePath": "schema/example.schema",
+    "line": 19,
+    "column": 5
+   },
    "improbable.Vector3d.z": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/vector3.schema",
     "line": 12,
@@ -1582,6 +1650,11 @@
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 100,
     "column": 3
+   },
+   "example.CoolEnum": {
+    "filePath": "schema/example.schema",
+    "line": 18,
+    "column": 1
    },
    "improbable.ComponentInterest.QueryConstraint.relative_box_constraint": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",

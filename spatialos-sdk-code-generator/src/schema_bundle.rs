@@ -204,6 +204,20 @@ pub struct EnumValueDefinition {
     pub annotations: Vec<Annotation>,
 }
 
+impl ToTokens for EnumValueDefinition {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let ident = syn::Ident::new(&self.identifier.name, proc_macro2::Span::call_site());
+        let value = syn::LitInt::new(
+            u64::from(self.value),
+            syn::IntSuffix::None,
+            proc_macro2::Span::call_site(),
+        );
+        tokens.append_all(quote! {
+            #ident = #value
+        });
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct EnumDefinition {
