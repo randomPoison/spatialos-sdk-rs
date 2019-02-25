@@ -22,7 +22,7 @@ pub fn generate(
     };
 
     // Create the module that is the root of the generated code.
-    let mut module = Module::new(prelude);
+    let mut module = Module::new(prelude, true);
 
     bundle
         .component_definitions
@@ -110,6 +110,7 @@ pub fn generate(
 
 #[derive(Debug, Clone)]
 struct Module {
+    is_root: bool,
     prelude: proc_macro2::TokenStream,
     // NOTE: We track the modules in a `BTreeMap` because it provides deterministic
     // iterator ordering. Deterministic ordering in the generated code is useful
@@ -119,8 +120,9 @@ struct Module {
 }
 
 impl Module {
-    fn new(prelude: proc_macro2::TokenStream) -> Self {
+    fn new(prelude: proc_macro2::TokenStream, is_root: bool) -> Self {
         Module {
+            is_root,
             prelude,
             modules: Default::default(),
             items: Default::default(),
@@ -132,7 +134,7 @@ impl Module {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        let default_module = Module::new(self.prelude.clone());
+        let default_module = Module::new(self.prelude.clone(), false);
         let mut module = self;
         for ident in path {
             module = module
@@ -146,7 +148,9 @@ impl Module {
 
 impl ToTokens for Module {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        tokens.append_all(self.prelude.clone());
+        if !self.is_root {
+            tokens.append_all(self.prelude.clone());
+        }
 
         for (ident, module) in &self.modules {
             let ident = syn::Ident::new(ident, proc_macro2::Span::call_site());
@@ -162,20 +166,5 @@ impl ToTokens for Module {
                 pub #item
             });
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::str;
-
-    static TEST_BUNDLE: &[u8] = include_bytes!("../data/bundle.json");
-
-    #[test]
-    fn deserialize_bundle() {
-        let contents = str::from_utf8(TEST_BUNDLE).unwrap();
-        let bundle =
-            crate::schema_bundle::load_bundle(contents).expect("Failed to parse bundle contents");
-        let _ = crate::generate(&bundle, "example", &["example"]).expect("Code generation failed");
     }
 }
