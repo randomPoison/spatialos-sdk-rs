@@ -8,12 +8,21 @@ pub mod schema_bundle;
 pub fn generate(
     bundle: &SchemaBundle,
     package: &str,
+    prelude: &[&str],
 ) -> Result<String, Box<dyn std::error::Error>> {
     let bundle = bundle.v1.as_ref().ok_or("Only v1 bundle is supported")?;
     let null_span = proc_macro2::Span::call_site();
 
+    // Generate the prelude that needs to be injected into all generated modules.
+    let prelude = prelude.iter().map(|path| {
+        syn::parse_str::<proc_macro2::TokenStream>(path).expect("Invalid path in prelude")
+    });
+    let prelude = quote! {
+        #( use #prelude; )*
+    };
+
     // Create the module that is the root of the generated code.
-    let mut module = Module::default();
+    let mut module = Module::new(prelude);
 
     bundle
         .component_definitions
@@ -99,8 +108,9 @@ pub fn generate(
     Ok(module.into_token_stream().to_string())
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct Module {
+    prelude: proc_macro2::TokenStream,
     // NOTE: We track the modules in a `BTreeMap` because it provides deterministic
     // iterator ordering. Deterministic ordering in the generated code is useful
     // when diffing changes and debugging the generated code.
@@ -109,14 +119,26 @@ struct Module {
 }
 
 impl Module {
+    fn new(prelude: proc_macro2::TokenStream) -> Self {
+        Module {
+            prelude,
+            modules: Default::default(),
+            items: Default::default(),
+        }
+    }
+
     fn get_submodule<I, S>(&mut self, path: I) -> &mut Module
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
+        let default_module = Module::new(self.prelude.clone());
         let mut module = self;
         for ident in path {
-            module = module.modules.entry(ident.into()).or_default();
+            module = module
+                .modules
+                .entry(ident.into())
+                .or_insert_with(|| default_module.clone());
         }
         module
     }
@@ -124,6 +146,8 @@ impl Module {
 
 impl ToTokens for Module {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append_all(self.prelude.clone());
+
         for (ident, module) in &self.modules {
             let ident = syn::Ident::new(ident, proc_macro2::Span::call_site());
             tokens.append_all(quote! {
@@ -152,6 +176,6 @@ mod tests {
         let contents = str::from_utf8(TEST_BUNDLE).unwrap();
         let bundle =
             crate::schema_bundle::load_bundle(contents).expect("Failed to parse bundle contents");
-        let _ = crate::generate(&bundle, "example").expect("Code generation failed");
+        let _ = crate::generate(&bundle, "example", &["example"]).expect("Code generation failed");
     }
 }
