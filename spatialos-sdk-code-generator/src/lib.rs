@@ -35,7 +35,7 @@ pub fn generate(
                 ComponentDataDefinition::Inline(fields) => {
                     let fields = fields.iter().map(|field_def| {
                         let ident = syn::Ident::new(&field_def.identifier.name, null_span);
-                        let ty = &field_def.ty;
+                        let ty = field_def.ty.quotable(&bundle);
                         quote! {
                             #ident: #ty
                         }
@@ -49,8 +49,9 @@ pub fn generate(
                 }
 
                 ComponentDataDefinition::TypeReference(type_reference) => {
+                    let ty_ref = type_reference.quotable(&bundle);
                     quote! {
-                        struct #ident(#type_reference);
+                        struct #ident(#ty_ref);
                     }
                 }
             };
@@ -69,7 +70,7 @@ pub fn generate(
 
             let fields = type_def.field_definitions.iter().map(|field_def| {
                 let ident = syn::Ident::new(&field_def.identifier.name, null_span);
-                let ty = &field_def.ty;
+                let ty = field_def.ty.quotable(&bundle);
                 quote! {
                     pub #ident: #ty
                 }

@@ -52,6 +52,51 @@
      }
     ],
     "annotations": []
+   },
+   {
+    "identifier": {
+     "qualifiedName": "example.CommandData.NestedType.NestedEnum",
+     "name": "NestedEnum",
+     "path": [
+      "example",
+      "CommandData",
+      "NestedType",
+      "NestedEnum"
+     ]
+    },
+    "valueDefinitions": [
+     {
+      "identifier": {
+       "qualifiedName": "example.CommandData.NestedType.NestedEnum.First",
+       "name": "First",
+       "path": [
+        "example",
+        "CommandData",
+        "NestedType",
+        "NestedEnum",
+        "First"
+       ]
+      },
+      "value": 1,
+      "annotations": []
+     },
+     {
+      "identifier": {
+       "qualifiedName": "example.CommandData.NestedType.NestedEnum.Second",
+       "name": "Second",
+       "path": [
+        "example",
+        "CommandData",
+        "NestedType",
+        "NestedEnum",
+        "Second"
+       ]
+      },
+      "value": 2,
+      "annotations": []
+     }
+    ],
+    "annotations": []
    }
   ],
   "typeDefinitions": [
@@ -165,6 +210,61 @@
       "singularType": {
        "type": {
         "primitive": "Int32"
+       }
+      },
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   },
+   {
+    "identifier": {
+     "qualifiedName": "example.CoolAnnotation",
+     "name": "CoolAnnotation",
+     "path": [
+      "example",
+      "CoolAnnotation"
+     ]
+    },
+    "fieldDefinitions": [
+     {
+      "identifier": {
+       "qualifiedName": "example.CoolAnnotation.cool",
+       "name": "cool",
+       "path": [
+        "example",
+        "CoolAnnotation",
+        "cool"
+       ]
+      },
+      "fieldId": 1,
+      "transient": false,
+      "singularType": {
+       "type": {
+        "enum": {
+         "qualifiedName": "example.CoolEnum"
+        }
+       }
+      },
+      "annotations": []
+     },
+     {
+      "identifier": {
+       "qualifiedName": "example.CoolAnnotation.data",
+       "name": "data",
+       "path": [
+        "example",
+        "CoolAnnotation",
+        "data"
+       ]
+      },
+      "fieldId": 2,
+      "transient": false,
+      "singularType": {
+       "type": {
+        "type": {
+         "qualifiedName": "example.SomeData"
+        }
        }
       },
       "annotations": []
@@ -1268,7 +1368,72 @@
     "fieldDefinitions": [],
     "eventDefinitions": [],
     "commandDefinitions": [],
-    "annotations": []
+    "annotations": [
+     {
+      "typeValue": {
+       "type": {
+        "qualifiedName": "example.CoolAnnotation"
+       },
+       "fields": [
+        {
+         "field": {
+          "qualifiedName": "example.CoolAnnotation.cool"
+         },
+         "name": "cool",
+         "number": 1,
+         "value": {
+          "enumValue": {
+           "enumValue": {
+            "qualifiedName": "example.CoolEnum.Bap"
+           },
+           "enum": {
+            "qualifiedName": "example.CoolEnum"
+           },
+           "name": "Bap",
+           "value": 3
+          }
+         }
+        },
+        {
+         "field": {
+          "qualifiedName": "example.CoolAnnotation.data"
+         },
+         "name": "data",
+         "number": 2,
+         "value": {
+          "typeValue": {
+           "type": {
+            "qualifiedName": "example.SomeData"
+           },
+           "fields": [
+            {
+             "field": {
+              "qualifiedName": "example.SomeData.foo"
+             },
+             "name": "foo",
+             "number": 1,
+             "value": {
+              "stringValue": "wowie zowie!"
+             }
+            },
+            {
+             "field": {
+              "qualifiedName": "example.SomeData.bar"
+             },
+             "name": "bar",
+             "number": 2,
+             "value": {
+              "int32Value": 7
+             }
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
    },
    {
     "identifier": {
@@ -1474,17 +1639,17 @@
    },
    "example.AnotherComponent": {
     "filePath": "schema/example.schema",
-    "line": 38,
+    "line": 49,
     "column": 1
    },
    "example.Example.x": {
     "filePath": "schema/example.schema",
-    "line": 16,
+    "line": 21,
     "column": 5
    },
    "example.Example.test_command": {
     "filePath": "schema/example.schema",
-    "line": 19,
+    "line": 24,
     "column": 5
    },
    "improbable.ComponentInterest.BoxConstraint": {
@@ -1527,14 +1692,14 @@
     "line": 155,
     "column": 5
    },
-   "improbable.WorkerAttributeSet": {
-    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
-    "line": 6,
-    "column": 1
-   },
    "example.CommandData": {
     "filePath": "schema/example.schema",
     "line": 5,
+    "column": 1
+   },
+   "improbable.WorkerAttributeSet": {
+    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
+    "line": 6,
     "column": 1
    },
    "improbable.ComponentInterest.QueryConstraint": {
@@ -1542,9 +1707,19 @@
     "line": 129,
     "column": 3
    },
+   "example.CoolAnnotation": {
+    "filePath": "schema/example.schema",
+    "line": 43,
+    "column": 1
+   },
+   "example.CoolAnnotation.data": {
+    "filePath": "schema/example.schema",
+    "line": 45,
+    "column": 5
+   },
    "example.SomeData.bar": {
     "filePath": "schema/example.schema",
-    "line": 29,
+    "line": 34,
     "column": 5
    },
    "example.CommandData.value": {
@@ -1617,6 +1792,11 @@
     "line": 164,
     "column": 5
    },
+   "example.CoolAnnotation.cool": {
+    "filePath": "schema/example.schema",
+    "line": 44,
+    "column": 5
+   },
    "improbable.ComponentInterest.queries": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 171,
@@ -1642,6 +1822,11 @@
     "line": 28,
     "column": 3
    },
+   "example.CommandData.NestedType.NestedEnum.Second": {
+    "filePath": "schema/example.schema",
+    "line": 13,
+    "column": 13
+   },
    "improbable.EntityAcl.component_write_acl": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 46,
@@ -1649,7 +1834,7 @@
    },
    "example.SomeData": {
     "filePath": "schema/example.schema",
-    "line": 27,
+    "line": 32,
     "column": 1
    },
    "improbable.WorkerRequirementSet": {
@@ -1687,15 +1872,15 @@
     "line": 109,
     "column": 5
    },
+   "example.CoolEnum.Bop": {
+    "filePath": "schema/example.schema",
+    "line": 39,
+    "column": 5
+   },
    "improbable.Coordinates": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 62,
     "column": 1
-   },
-   "example.CoolEnum.Bop": {
-    "filePath": "schema/example.schema",
-    "line": 34,
-    "column": 5
    },
    "improbable.EntityAcl.read_acl": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
@@ -1707,19 +1892,19 @@
     "line": 167,
     "column": 3
    },
+   "improbable.ComponentInterest.QueryConstraint.entity_id_constraint": {
+    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
+    "line": 138,
+    "column": 5
+   },
    "example.CoolEnum.Bap": {
     "filePath": "schema/example.schema",
-    "line": 35,
+    "line": 40,
     "column": 5
    },
    "improbable.ComponentInterest.Query.full_snapshot_result": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 108,
-    "column": 5
-   },
-   "improbable.ComponentInterest.QueryConstraint.entity_id_constraint": {
-    "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
-    "line": 138,
     "column": 5
    },
    "improbable.Interest": {
@@ -1729,18 +1914,23 @@
    },
    "example.SomeData.foo": {
     "filePath": "schema/example.schema",
-    "line": 28,
+    "line": 33,
     "column": 5
    },
    "example.SomeComponent": {
     "filePath": "schema/example.schema",
-    "line": 22,
+    "line": 27,
     "column": 1
    },
    "improbable.ComponentInterest.CylinderConstraint.radius": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 151,
     "column": 5
+   },
+   "example.CommandData.NestedType.NestedEnum.First": {
+    "filePath": "schema/example.schema",
+    "line": 12,
+    "column": 13
    },
    "improbable.EdgeLength": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
@@ -1764,7 +1954,7 @@
    },
    "example.Example": {
     "filePath": "schema/example.schema",
-    "line": 13,
+    "line": 18,
     "column": 1
    },
    "improbable.EdgeLength.y": {
@@ -1779,12 +1969,12 @@
    },
    "example.Example.point": {
     "filePath": "schema/example.schema",
-    "line": 17,
+    "line": 22,
     "column": 5
    },
    "example.CoolEnum.Boop": {
     "filePath": "schema/example.schema",
-    "line": 33,
+    "line": 38,
     "column": 5
    },
    "improbable.Vector3d.z": {
@@ -1809,7 +1999,7 @@
    },
    "example.CoolEnum": {
     "filePath": "schema/example.schema",
-    "line": 32,
+    "line": 37,
     "column": 1
    },
    "improbable.ComponentInterest.QueryConstraint.relative_box_constraint": {
@@ -1851,6 +2041,11 @@
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",
     "line": 145,
     "column": 5
+   },
+   "example.CommandData.NestedType.NestedEnum": {
+    "filePath": "schema/example.schema",
+    "line": 11,
+    "column": 9
    },
    "improbable.ComponentInterest.QueryConstraint.relative_cylinder_constraint": {
     "filePath": "D:\\SpatialOS\\sdk-13.6.0\\std-lib/improbable/standard_library.schema",

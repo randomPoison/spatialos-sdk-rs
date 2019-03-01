@@ -40,6 +40,12 @@ enum CoolEnum {
     Bap = 3;
 }
 
+type CoolAnnotation {
+    CoolEnum cool = 1;
+    SomeData data = 2;
+}
+
+[CoolAnnotation(cool = CoolEnum.Bap, data = SomeData(foo = "wowie zowie!", bar = 7))]
 component AnotherComponent {
     id = 1002;
     data CommandData.NestedType;

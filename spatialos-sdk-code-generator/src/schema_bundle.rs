@@ -4,6 +4,8 @@ use quote::{quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 
+pub mod quotable;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Identifier {
@@ -29,11 +31,29 @@ impl Identifier {
 
     /// Returns the path elements for the item, converting elements to `snake_case`
     /// as needed to ensure that they're valid Rust module identifiers.
+    ///
+    /// Does not include the name of the item itself. For example, if `path` is
+    /// `["foo_foo", "BarBar", "bazBaz", "Quux"]`, the resuling iterator would yield
+    /// "foo_foo", "bar_bar", "baz_baz". Note that each of the elements was
+    /// converted to `snake_case` to adhere to Rusts style conventions for module
+    /// names.
     pub fn module_path(&self) -> impl Iterator<Item = String> + '_ {
         let len = self.path.len() - 1;
         self.path[..len]
             .iter()
             .map(|seg| heck::SnekCase::to_snek_case(&**seg))
+    }
+
+    /// Returns the path to correctly reference the item by name.
+    ///
+    /// Note that the returned path is relative to the root for the generated code.
+    pub fn reference_path(&self) -> proc_macro2::TokenStream {
+        let path_string = self
+            .module_path()
+            .chain(std::iter::once(self.path[self.path.len() - 1].clone()))
+            .collect::<Vec<_>>()
+            .join("::");
+        syn::parse_str(&path_string).unwrap()
     }
 }
 
@@ -90,14 +110,12 @@ pub struct TypeReference {
     pub qualified_name: String,
 }
 
-impl ToTokens for TypeReference {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let path = self
-            .qualified_name
-            .split('.')
-            .collect::<Vec<_>>()
-            .join("::");
-        tokens.append_all(syn::parse_str::<proc_macro2::TokenStream>(&path));
+impl TypeReference {
+    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::TypeReference<'a> {
+        quotable::TypeReference {
+            bundle,
+            qualified_name: &*self.qualified_name,
+        }
     }
 }
 
@@ -107,9 +125,12 @@ pub struct EnumReference {
     pub qualified_name: String,
 }
 
-impl ToTokens for EnumReference {
-    fn to_tokens(&self, _tokens: &mut proc_macro2::TokenStream) {
-        unimplemented!();
+impl EnumReference {
+    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::EnumReference<'a> {
+        quotable::EnumReference {
+            bundle,
+            qualified_name: &*self.qualified_name,
+        }
     }
 }
 
@@ -133,12 +154,16 @@ pub enum ValueTypeReference {
     Type(TypeReference),
 }
 
-impl ToTokens for ValueTypeReference {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+impl ValueTypeReference {
+    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::ValueTypeReference<'a> {
         match self {
-            ValueTypeReference::Primitive(primitive) => primitive.to_tokens(tokens),
-            ValueTypeReference::Enum(enum_ty) => enum_ty.to_tokens(tokens),
-            ValueTypeReference::Type(ty) => ty.to_tokens(tokens),
+            ValueTypeReference::Primitive(prim) => quotable::ValueTypeReference::Primitive(*prim),
+            ValueTypeReference::Enum(enum_ref) => {
+                quotable::ValueTypeReference::Enum(enum_ref.quotable(bundle))
+            }
+            ValueTypeReference::Type(type_ref) => {
+                quotable::ValueTypeReference::Type(type_ref.quotable(bundle))
+            }
         }
     }
 }
@@ -169,23 +194,51 @@ pub struct Value_MapValue {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Value {
-    pub bool_value: Option<bool>,
-    pub uint32_value: Option<u32>,
-    pub uint64_value: Option<u64>,
-    pub int32_value: Option<i32>,
-    pub int64_value: Option<i64>,
-    pub float_value: Option<f32>,
-    pub double_value: Option<f64>,
-    pub string_value: Option<String>,
-    pub bytes_value: Option<String>,
-    pub entity_id_value: Option<i64>,
-    pub enum_value: Option<EnumValue>,
-    pub type_value: Option<TypeValue>,
-    pub option_value: Option<Value_OptionValue>,
-    pub list_value: Option<Value_ListValue>,
-    pub map_value: Option<Value_MapValue>,
+pub enum Value {
+    #[serde(rename = "boolValue")]
+    Bool(bool),
+
+    #[serde(rename = "uint32Value")]
+    U32(u32),
+
+    #[serde(rename = "uint64Value")]
+    U64(u64),
+
+    #[serde(rename = "int32Value")]
+    I32(i32),
+
+    #[serde(rename = "int64Value")]
+    I64(i64),
+
+    #[serde(rename = "floatValue")]
+    F32(f32),
+
+    #[serde(rename = "doubleValue")]
+    F64(f64),
+
+    #[serde(rename = "stringValue")]
+    String(String),
+
+    #[serde(rename = "bytesValue")]
+    Bytes(Vec<u8>),
+
+    #[serde(rename = "entityIdValue")]
+    EntityId(i64),
+
+    #[serde(rename = "enumValue")]
+    Enum(EnumValue),
+
+    #[serde(rename = "typeValue")]
+    Type(TypeValue),
+
+    #[serde(rename = "optionValue")]
+    Option(Value_OptionValue),
+
+    #[serde(rename = "listValue")]
+    List(Value_ListValue),
+
+    #[serde(rename = "mapValue")]
+    Map(Value_MapValue),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -193,7 +246,7 @@ pub struct Value {
 pub struct EnumValue {
     pub enum_value: EnumValueReference,
     #[serde(rename = "enum")]
-    pub enum_reference: EnumReference,
+    pub enum_reference: TypeReference,
     pub name: String,
     pub value: u32,
 }
@@ -288,33 +341,25 @@ pub enum FieldTypeDefinition {
     },
 }
 
-impl ToTokens for FieldTypeDefinition {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+impl FieldTypeDefinition {
+    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::FieldTypeDefinition<'a> {
         match self {
             FieldTypeDefinition::Singular { ty } => {
-                ty.to_tokens(tokens);
+                quotable::FieldTypeDefinition::Singular(ty.quotable(bundle))
             }
-
             FieldTypeDefinition::Optional { inner_type } => {
-                tokens.append_all(quote! {
-                    Option<#inner_type>
-                });
+                quotable::FieldTypeDefinition::Optional(inner_type.quotable(bundle))
             }
-
             FieldTypeDefinition::List { inner_type } => {
-                tokens.append_all(quote! {
-                    Vec<#inner_type>
-                });
+                quotable::FieldTypeDefinition::List(inner_type.quotable(bundle))
             }
-
             FieldTypeDefinition::Map {
                 key_type,
                 value_type,
-            } => {
-                tokens.append_all(quote! {
-                    std::collections::BTreeMap<#key_type, #value_type>
-                });
-            }
+            } => quotable::FieldTypeDefinition::Map {
+                key: key_type.quotable(bundle),
+                value: value_type.quotable(bundle),
+            },
         }
     }
 }
