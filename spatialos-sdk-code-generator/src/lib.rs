@@ -43,7 +43,7 @@ pub fn generate(
 
                     quote! {
                         struct #ident {
-                            #( #fields ),*
+                            #( pub #fields ),*
                         }
                     }
                 }
@@ -72,13 +72,13 @@ pub fn generate(
                 let ident = syn::Ident::new(&field_def.identifier.name, null_span);
                 let ty = field_def.ty.quotable(&bundle);
                 quote! {
-                    pub #ident: #ty
+                    #ident: #ty
                 }
             });
 
             let generated = quote! {
                 struct #ident {
-                    #( #fields ),*
+                    #( pub #fields ),*
                 }
             };
 
