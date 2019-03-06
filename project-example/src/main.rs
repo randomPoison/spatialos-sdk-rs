@@ -1,6 +1,6 @@
 use crate::connection_handler::*;
+use crate::generated_code::{example, improbable};
 use crate::opt::*;
-use generated_code::{example, improbable};
 use spatialos_sdk::worker::commands::{
     DeleteEntityRequest, EntityQueryRequest, ReserveEntityIdsRequest,
 };
@@ -16,7 +16,6 @@ use structopt::StructOpt;
 use tap::*;
 
 mod connection_handler;
-#[rustfmt::skip]
 mod generated_code;
 mod opt;
 
