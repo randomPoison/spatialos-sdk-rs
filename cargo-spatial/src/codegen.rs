@@ -101,7 +101,7 @@ where
 }
 
 /// Performs code generation for a build script.
-pub fn build() -> Result<(), Box<dyn std::error::Error>> {
+pub fn build(package: &str, prelude: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     use std::{env, fs::File};
 
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -117,12 +117,8 @@ pub fn build() -> Result<(), Box<dyn std::error::Error>> {
     let bundle = serde_json::from_reader(bundle_file).expect("Failed to deserialize bundle.json");
 
     // Use the code generator to generate the Rust types from the schema bundle.
-    let generated = spatialos_sdk_code_generator::generate(
-        &bundle,
-        "improbable",
-        &["crate::schema::improbable"],
-    )
-    .map_err(|_| "Failed to generate code from bundle")?;
+    let generated = spatialos_sdk_code_generator::generate(&bundle, package, prelude)
+        .map_err(|_| "Failed to generate code from bundle")?;
 
     let dest_path = Path::new(&out_dir).join("generated.rs");
     fs::write(dest_path, generated).map_err(|_| "Failed to write generated code to file")?;
