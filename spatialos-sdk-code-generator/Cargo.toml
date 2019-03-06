@@ -13,11 +13,3 @@ serde_json = "1.0"
 t4rust-derive = { git = "https://github.com/ReSpeak/t4rust" }
 quote = "0.6.11"
 syn = "0.15.26"
-
-[lib]
-name = "spatialos_sdk_code_generator"
-path = "src/lib.rs"
-
-[[bin]]
-name = "generator"
-path = "src/bin.rs"

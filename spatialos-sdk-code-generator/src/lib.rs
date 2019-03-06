@@ -106,7 +106,33 @@ pub fn generate(
             module.items.push(generated);
         });
 
-    Ok(module.into_token_stream().to_string())
+    let raw_generated = module.into_token_stream().to_string();
+    let generated = rustfmt(raw_generated.clone()).unwrap_or(raw_generated);
+    Ok(generated)
+}
+
+pub fn rustfmt<S>(module: S) -> Result<String, Box<dyn std::error::Error>>
+where
+    S: Into<String>,
+{
+    use std::{
+        io::Write,
+        process::{Command, Stdio},
+        str,
+    };
+
+    let mut child = Command::new("rustfmt")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    let stdin = child.stdin.as_mut().unwrap();
+    stdin.write_all(module.into().as_bytes())?;
+
+    let output = child.wait_with_output()?;
+    let formatted = str::from_utf8(&output.stdout[..])?.into();
+
+    Ok(formatted)
 }
 
 #[derive(Debug, Clone)]
