@@ -1,6 +1,7 @@
 use crate::connection_handler::*;
-use crate::generated_code::{example, improbable};
+use crate::generated_code::example;
 use crate::opt::*;
+use spatialos_sdk::schema::improbable;
 use spatialos_sdk::worker::commands::{
     DeleteEntityRequest, EntityQueryRequest, ReserveEntityIdsRequest,
 };
