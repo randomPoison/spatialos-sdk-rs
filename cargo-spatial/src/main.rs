@@ -19,7 +19,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Perform the operation selected by the user.
     match &opt.command {
-        Command::Codegen => codegen::run_codegen(&config)?,
+        Command::Codegen => {
+            codegen::compile_schemas(&config, codegen::SchemaCompilationMode::GenerateDescriptor)?;
+        }
 
         Command::Local(local) => match local {
             Local::Launch(launch) => local::launch(&config, launch)?,

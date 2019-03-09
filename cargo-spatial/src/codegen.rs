@@ -6,11 +6,20 @@ use std::path::*;
 use std::process::Command;
 use tap::*;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SchemaCompilationMode {
+    GenerateDescriptor,
+    GeneratorBundle { out_path: PathBuf },
+}
+
 /// Performs code generation for the project described by `config`.
 ///
 /// Assumes that the current working directory is the root directory of the project,
 /// i.e. the directory that has the `Spatial.toml` file.
-pub fn run_codegen(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+pub fn compile_schemas(
+    config: &Config,
+    mode: SchemaCompilationMode,
+) -> Result<(), Box<dyn std::error::Error>> {
     assert!(
         crate::current_dir_is_root(),
         "Current directory should be the project root"
@@ -20,36 +29,6 @@ pub fn run_codegen(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     let spatial_lib_dir = config.spatial_lib_dir()
         .map(normalize)
         .ok_or("spatial_lib_dir value must be set in the config, or the SPATIAL_LIB_DIR environment variable must be set")?;
-
-    // Calculate the various output directories relative to `output_dir`.
-    let output_dir = normalize(config.schema_build_dir());
-    let bundle_json_path = output_dir.join("bundle.json");
-
-    // Create the output directory if it doesn't already exist.
-    fs::create_dir_all(&output_dir)
-        .map_err(|_| format!("Failed to create {}", output_dir.display()))?;
-    trace!("Created schema output dir: {}", output_dir.display());
-
-    compile_schemas(
-        &spatial_lib_dir,
-        None,
-        Some(&output_dir),
-        &config.schema_paths[..],
-    )?;
-
-    Ok(())
-}
-
-pub fn compile_schemas<P>(
-    spatial_lib_dir: P,
-    bundle_json_path: Option<&Path>,
-    output_dir: Option<&Path>,
-    schema_paths: &[String],
-) -> Result<(), Box<dyn std::error::Error>>
-where
-    P: AsRef<Path>,
-{
-    let spatial_lib_dir = spatial_lib_dir.as_ref();
 
     // Determine the paths the the schema compiler and protoc relative the the lib
     // dir path.
@@ -70,25 +49,37 @@ where
         .arg(&schema_path_arg)
         .arg("--load_all_schema_on_schema_path");
 
-    if let Some(bundle_json_path) = bundle_json_path {
-        let bundle_json_arg =
-            OsString::from("--bundle_json_out=").tap(|arg| arg.push(bundle_json_path));
-        command.arg(&bundle_json_arg);
-    }
+    match mode {
+        SchemaCompilationMode::GenerateDescriptor => {
+            // Calculate the various output directories relative to `output_dir`.
+            let output_dir = normalize(config.schema_build_dir());
 
-    if let Some(output_dir) = output_dir {
-        let descriptor_out_arg = OsString::from("--descriptor_set_out=")
-            .tap(|arg| arg.push(normalize(output_dir.join("schema.descriptor"))));
-        command.arg(&descriptor_out_arg);
+            // Create the output directory if it doesn't already exist.
+            fs::create_dir_all(&output_dir)
+                .map_err(|_| format!("Failed to create {}", output_dir.display()))?;
+            trace!("Created schema output dir: {}", output_dir.display());
+
+            let descriptor_out_arg = OsString::from("--descriptor_set_out=")
+                .tap(|arg| arg.push(normalize(output_dir.join("schema.descriptor"))));
+            command.arg(&descriptor_out_arg);
+        }
+
+        SchemaCompilationMode::GeneratorBundle {
+            out_path: bundle_json_path,
+        } => {
+            let bundle_json_arg =
+                OsString::from("--bundle_json_out=").tap(|arg| arg.push(bundle_json_path));
+            command.arg(&bundle_json_arg);
+        }
     }
 
     // Add all the root schema paths.
-    for schema_path in schema_paths {
+    for schema_path in &config.schema_paths {
         let arg = OsString::from("--schema_path=").tap(|arg| arg.push(normalize(schema_path)));
         command.arg(&arg);
     }
 
-    trace!("{:#?}", command);
+    trace!("{:?}", command);
     let status = command
         .status()
         .map_err(|_| "Failed to compile schema files")?;
@@ -104,13 +95,19 @@ where
 pub fn build(package: &str, prelude: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     use std::{env, fs::File};
 
+    let config = Config::load()?;
+    trace!("Loaded config: {:#?}", config);
+
     let out_dir = env::var("OUT_DIR").unwrap();
     let bundle_path = Path::new(&out_dir).join("bundle.json");
 
     // Use cargo-spatial to generate the schema file from all the bundles.
-    let spatial_lib_dir =
-        env::var("SPATIAL_LIB_DIR").map_err(|_| "SPATIAL_LIB_DIR environment variable not set")?;
-    compile_schemas(&spatial_lib_dir, Some(&bundle_path), None, &[])?;
+    compile_schemas(
+        &config,
+        SchemaCompilationMode::GeneratorBundle {
+            out_path: bundle_path.clone(),
+        },
+    )?;
 
     // Load the source bundle.
     let bundle_file = File::open(&bundle_path).expect("Failed to open bundle.json");
