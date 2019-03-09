@@ -1,16 +1,18 @@
 use crate::generated_code::example;
 use crate::{connection_handler::*, opt::*};
 use rand::Rng;
-use spatialos_sdk::worker::{
-    commands::{EntityQueryRequest, ReserveEntityIdsRequest},
-    component::{Component, ComponentData, UpdateParameters},
-    connection::{Connection, WorkerConnection},
-    entity::Entity,
-    metrics::{HistogramMetric, Metrics},
-    op::WorkerOp,
-    query::{EntityQuery, QueryConstraint, ResultType},
+use spatialos_sdk::{
     schema::improbable,
-    {EntityId, InterestOverride, LogLevel},
+    worker::{
+        commands::{EntityQueryRequest, ReserveEntityIdsRequest},
+        component::{Component, ComponentData, UpdateParameters},
+        connection::{Connection, WorkerConnection},
+        entity::Entity,
+        metrics::{HistogramMetric, Metrics},
+        op::WorkerOp,
+        query::{EntityQuery, QueryConstraint, ResultType},
+        {EntityId, InterestOverride, LogLevel},
+    },
 };
 use std::{
     collections::{BTreeMap, HashMap},
