@@ -1,4 +1,5 @@
 use crate::schema_bundle::*;
+use proc_macro2::TokenStream;
 use quote::*;
 use std::collections::BTreeMap;
 
@@ -20,9 +21,11 @@ pub fn generate(
     let prelude = quote! {
         #( use #prelude; )*
     };
+    let default_module = Module::new(prelude);
 
-    // Create the module that is the root of the generated code.
-    let mut module = Module::new(prelude, true);
+    // Track all generated modules in a `BTreeMap` in order to get deterministic
+    // iteration ordering, which is useful when doing diffs when testing.
+    let mut modules = BTreeMap::new();
 
     bundle
         .component_definitions
@@ -57,7 +60,7 @@ pub fn generate(
             };
 
             let module_path = component_def.identifier.module_path();
-            let module = module.get_submodule(module_path);
+            let module = get_submodule(&mut modules, module_path, &default_module);
             module.items.push(generated);
         });
 
@@ -83,7 +86,7 @@ pub fn generate(
             };
 
             let module_path = type_def.identifier.module_path();
-            let module = module.get_submodule(module_path);
+            let module = get_submodule(&mut modules, module_path, &default_module);
             module.items.push(generated);
         });
 
@@ -102,12 +105,28 @@ pub fn generate(
             };
 
             let module_path = enum_def.identifier.module_path();
-            let module = module.get_submodule(module_path);
+            let module = get_submodule(&mut modules, module_path, &default_module);
             module.items.push(generated);
         });
 
-    let raw_generated = module.into_token_stream().to_string();
+    // Generate the code for each of the modules.
+    let module_names = modules.keys();
+    let modules = modules.values();
+    let raw_generated = quote! {
+        #(
+            pub mod #module_names {
+                #modules
+            }
+        )*
+    }
+    .to_string();
+
+    // Attempt to use rustfmt to format the code in order to help with debugging.
+    // If this fails for any reason, we simply default to using the unformatted
+    // code. This ensures that code generation can still work even if the user
+    // doesn't have rustfmt installed.
     let generated = rustfmt(raw_generated.clone()).unwrap_or(raw_generated);
+
     Ok(generated)
 }
 
@@ -137,47 +156,32 @@ where
 
 #[derive(Debug, Clone)]
 struct Module {
-    is_root: bool,
-    prelude: proc_macro2::TokenStream,
+    /// The import prelude to be injected at the beginning of the module.
+    prelude: TokenStream,
+
+    /// The items included in the module.
+    items: Vec<TokenStream>,
+
     // NOTE: We track the modules in a `BTreeMap` because it provides deterministic
     // iterator ordering. Deterministic ordering in the generated code is useful
     // when diffing changes and debugging the generated code.
     modules: BTreeMap<String, Module>,
-    items: Vec<proc_macro2::TokenStream>,
 }
 
 impl Module {
-    fn new(prelude: proc_macro2::TokenStream, is_root: bool) -> Self {
+    fn new(prelude: TokenStream) -> Self {
         Module {
-            is_root,
             prelude,
             modules: Default::default(),
             items: Default::default(),
         }
     }
-
-    fn get_submodule<I, S>(&mut self, path: I) -> &mut Module
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        let default_module = Module::new(self.prelude.clone(), false);
-        let mut module = self;
-        for ident in path {
-            module = module
-                .modules
-                .entry(ident.into())
-                .or_insert_with(|| default_module.clone());
-        }
-        module
-    }
 }
 
 impl ToTokens for Module {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        if !self.is_root {
-            tokens.append_all(self.prelude.clone());
-        }
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        // Inject the prelude at the beginning of the module.
+        tokens.append_all(self.prelude.clone());
 
         for (ident, module) in &self.modules {
             let ident = syn::Ident::new(ident, proc_macro2::Span::call_site());
@@ -194,4 +198,32 @@ impl ToTokens for Module {
             });
         }
     }
+}
+
+fn get_submodule<'a, I, S>(
+    modules: &'a mut BTreeMap<String, Module>,
+    path: I,
+    default_module: &Module,
+) -> &'a mut Module
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    // Extract the first module based on the first segment of the path.
+    let mut iterator = path.into_iter();
+    let first = iterator.next().expect("`path` was empty");
+    let mut module = modules
+        .entry(first.into())
+        .or_insert_with(|| default_module.clone());
+
+    // Iterate over the remaining segments of the path, getting or creating all
+    // intermediate modules.
+    for ident in iterator {
+        module = module
+            .modules
+            .entry(ident.into())
+            .or_insert_with(|| default_module.clone());
+    }
+
+    module
 }
