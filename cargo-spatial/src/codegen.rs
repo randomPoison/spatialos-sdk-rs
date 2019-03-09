@@ -79,7 +79,7 @@ pub fn compile_schemas(
         command.arg(&arg);
     }
 
-    trace!("{:?}", command);
+    trace!("{:#?}", command);
     let status = command
         .status()
         .map_err(|_| "Failed to compile schema files")?;

@@ -1,7 +1,8 @@
 use crate::ptr::MutPtr;
 use crate::worker::{
+    alpha,
     commands::*,
-    component::{self, internal::ComponentUpdate, Component},
+    component::{self, Component, UpdateParameters},
     entity::Entity,
     internal::utils::cstr_to_string,
     locator::*,
@@ -118,11 +119,13 @@ pub trait Connection {
         message: &str,
     ) -> Result<(), NulError>;
 
-    fn send_component_update(
+    fn send_component_update<C: Component>(
         &mut self,
         entity_id: EntityId,
-        component_update: component::internal::ComponentUpdate,
+        update: C::Update,
+        parameters: UpdateParameters,
     );
+
     fn send_component_interest(
         &mut self,
         entity_id: EntityId,
@@ -197,15 +200,13 @@ impl WorkerConnection {
         let hostname_cstr = CString::new(hostname).expect("Received 0 byte in supplied hostname.");
         let worker_id_cstr =
             CString::new(worker_id).expect("Received 0 byte in supplied Worker ID");
-        let mut conn_params = params.to_worker_sdk();
-        conn_params.native_struct.component_vtables = params.components.to_worker_sdk();
-        conn_params.native_struct.component_vtable_count = params.components.len() as u32;
+        let conn_params = params.to_worker_sdk();
         let future_ptr = unsafe {
             Worker_ConnectAsync(
                 hostname_cstr.as_ptr(),
                 port,
                 worker_id_cstr.as_ptr(),
-                &conn_params.native_struct,
+                &conn_params,
             )
         };
         assert!(!future_ptr.is_null());
@@ -228,7 +229,7 @@ impl WorkerConnection {
             let ptr = Worker_Locator_ConnectAsync(
                 locator.locator,
                 deployment_name_cstr.as_ptr(),
-                &connection_params.native_struct,
+                &connection_params,
                 callback_ptr,
                 Some(queue_status_callback_handler),
             );
@@ -237,6 +238,19 @@ impl WorkerConnection {
                 was_consumed: false,
                 queue_status_callback: Some(callback_ptr),
             }
+        }
+    }
+
+    pub fn connect_alpha_locator_async(
+        locator: &alpha::Locator,
+        params: &ConnectionParameters,
+    ) -> WorkerConnectionFuture {
+        let connection_params = params.to_worker_sdk();
+
+        unsafe {
+            let ptr = Worker_Alpha_Locator_ConnectAsync(locator.internal, &connection_params);
+
+            WorkerConnectionFuture::new(ptr)
         }
     }
 }
@@ -435,8 +449,28 @@ impl Connection for WorkerConnection {
         Ok(())
     }
 
-    fn send_component_update(&mut self, _entity_id: EntityId, _component_update: ComponentUpdate) {
-        unimplemented!()
+    fn send_component_update<C: Component>(
+        &mut self,
+        entity_id: EntityId,
+        update: C::Update,
+        parameters: UpdateParameters,
+    ) {
+        let component_update = Worker_ComponentUpdate {
+            reserved: ptr::null_mut(),
+            component_id: C::ID,
+            schema_type: ptr::null_mut(),
+            user_handle: component::handle_allocate(update),
+        };
+
+        let params = parameters.to_worker_sdk();
+        unsafe {
+            Worker_Alpha_Connection_SendComponentUpdate(
+                self.connection_ptr.get(),
+                entity_id.id,
+                &component_update,
+                &params,
+            );
+        }
     }
 
     fn send_component_interest(
@@ -584,7 +618,7 @@ impl Future for WorkerConnectionFuture {
     type Item = WorkerConnection;
     type Error = String;
 
-    fn poll(&mut self) -> Result<Async<WorkerConnection>, String> {
+    fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
         if self.was_consumed {
             return Err("WorkerConnectionFuture has already been consumed.".to_owned());
         }
@@ -607,7 +641,7 @@ impl Future for WorkerConnectionFuture {
         Err(status.detail)
     }
 
-    fn wait(self) -> Result<WorkerConnection, String>
+    fn wait(self) -> Result<<Self as Future>::Item, <Self as Future>::Error>
     where
         Self: Sized,
     {

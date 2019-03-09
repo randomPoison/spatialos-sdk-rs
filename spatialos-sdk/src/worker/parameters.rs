@@ -1,13 +1,12 @@
-use std::ffi::CString;
-use std::ptr;
-
-use crate::worker::component::ComponentDatabase;
-use crate::worker::internal::utils::WrappedNativeStructWithString;
-use crate::worker::vtable;
+use crate::worker::{component::ComponentDatabase, vtable};
 use spatialos_sdk_sys::worker::*;
+use std::{
+    ffi::{CStr, CString},
+    ptr,
+};
 
 pub struct ConnectionParameters {
-    pub worker_type: String,
+    pub worker_type: CString,
     pub network: NetworkParameters,
     pub send_queue_capacity: u32,
     pub receive_queue_capacity: u32,
@@ -16,19 +15,21 @@ pub struct ConnectionParameters {
     pub protocol_logging: ProtocolLoggingParameters,
     pub enable_protocol_logging_at_startup: bool,
     pub thread_affinity: ThreadAffinityParameters,
-    pub components: ComponentDatabase,
+    components: Option<ComponentDatabase>,
 }
 
 impl ConnectionParameters {
-    pub fn new<T: Into<String>>(worker_type: T, components: ComponentDatabase) -> Self {
-        let mut params = ConnectionParameters::default(components);
-        params.worker_type = worker_type.into();
+    pub fn new<T: AsRef<str>>(worker_type: T) -> Self {
+        let mut params = ConnectionParameters::default();
+        params.worker_type =
+            CString::new(worker_type.as_ref()).expect("`worker_type` contains a null byte");
         params
     }
 
-    pub fn with_protocol_logging<T: Into<String>>(mut self, log_prefix: T) -> Self {
+    pub fn with_protocol_logging<T: AsRef<str>>(mut self, log_prefix: T) -> Self {
         self.enable_protocol_logging_at_startup = true;
-        self.protocol_logging.log_prefix = log_prefix.into();
+        self.protocol_logging.log_prefix =
+            CString::new(log_prefix.as_ref()).expect("`log_prefix` contained a null byte");
         self
     }
 
@@ -69,9 +70,14 @@ impl ConnectionParameters {
         self
     }
 
-    pub fn default(components: ComponentDatabase) -> Self {
+    pub fn enable_internal_serialization(mut self) -> Self {
+        self.components = Some(ComponentDatabase::new());
+        self
+    }
+
+    pub fn default() -> Self {
         ConnectionParameters {
-            worker_type: "".to_owned(),
+            worker_type: CString::new("").unwrap(),
             network: NetworkParameters::default(),
             send_queue_capacity: WORKER_DEFAULTS_SEND_QUEUE_CAPACITY,
             receive_queue_capacity: WORKER_DEFAULTS_RECEIVE_QUEUE_CAPACITY,
@@ -81,18 +87,13 @@ impl ConnectionParameters {
             protocol_logging: ProtocolLoggingParameters::default(),
             enable_protocol_logging_at_startup: false,
             thread_affinity: ThreadAffinityParameters::default(),
-            components,
+            components: None,
         }
     }
 
-    pub(crate) fn to_worker_sdk(
-        &self,
-    ) -> WrappedNativeStructWithString<Worker_ConnectionParameters> {
-        let worker_type_cstr = CString::new(self.worker_type.clone())
-            .expect("Received 0 byte in supplied worker_type.");
-        let ptr = worker_type_cstr.as_ptr();
-        let params = Worker_ConnectionParameters {
-            worker_type: ptr,
+    pub(crate) fn to_worker_sdk(&self) -> Worker_ConnectionParameters {
+        Worker_ConnectionParameters {
+            worker_type: self.worker_type.as_ptr(),
             network: self.network.to_worker_sdk(),
             send_queue_capacity: self.send_queue_capacity,
             receive_queue_capacity: self.receive_queue_capacity,
@@ -101,13 +102,18 @@ impl ConnectionParameters {
             protocol_logging: self.protocol_logging.to_worker_sdk(),
             enable_protocol_logging_at_startup: self.enable_protocol_logging_at_startup as u8,
             thread_affinity: self.thread_affinity.to_worker_sdk(),
-            component_vtable_count: 0,
-            component_vtables: ptr::null(),
-            default_component_vtable: ptr::null(),
-        };
-        WrappedNativeStructWithString {
-            native_struct: params,
-            native_string_ref: worker_type_cstr,
+            component_vtable_count: match self.components {
+                Some(ref components) => components.len() as u32,
+                None => 0,
+            },
+            component_vtables: match self.components {
+                Some(ref components) => components.to_worker_sdk(),
+                None => ptr::null(),
+            },
+            default_component_vtable: match self.components {
+                Some(_) => ptr::null(),
+                None => &vtable::PASSTHROUGH_VTABLE,
+            },
         }
     }
 }
@@ -125,7 +131,7 @@ impl ProtocolType {
         u8,
         Worker_RakNetNetworkParameters,
         Worker_TcpNetworkParameters,
-        Worker_Alpha_KcpNetworkParameters,
+        Worker_KcpNetworkParameters,
     ) {
         match self {
             ProtocolType::Tcp(params) => {
@@ -249,7 +255,8 @@ pub struct KcpNetworkParameters {
     pub multiplex_level: u32,
     pub update_interval_millis: u32,
     pub min_rto_millis: u32,
-    pub window_size: u32,
+    pub send_window_size: u32,
+    pub receive_window_size: u32,
     pub erasure_codec: Option<ErasureCodecParameters>,
     pub heartbeat_params: HeartbeatParameters,
 }
@@ -263,7 +270,8 @@ impl KcpNetworkParameters {
             multiplex_level: WORKER_DEFAULTS_KCP_MULTIPLEX_LEVEL,
             update_interval_millis: WORKER_DEFAULTS_KCP_UPDATE_INTERVAL_MILLIS,
             min_rto_millis: WORKER_DEFAULTS_KCP_MIN_RTO_MILLIS,
-            window_size: WORKER_DEFAULTS_KCP_WINDOW_SIZE,
+            send_window_size: WORKER_DEFAULTS_KCP_SEND_WINDOW_SIZE,
+            receive_window_size: WORKER_DEFAULTS_KCP_RECV_WINDOW_SIZE,
             erasure_codec: if WORKER_DEFAULTS_KCP_ENABLE_ERASURE_CODEC != 0 {
                 Some(ErasureCodecParameters::default())
             } else {
@@ -273,15 +281,16 @@ impl KcpNetworkParameters {
         }
     }
 
-    pub(crate) fn to_worker_sdk(&self) -> Worker_Alpha_KcpNetworkParameters {
-        Worker_Alpha_KcpNetworkParameters {
+    pub(crate) fn to_worker_sdk(&self) -> Worker_KcpNetworkParameters {
+        Worker_KcpNetworkParameters {
             fast_retransmission: self.fast_transmission as u8,
             early_retransmission: self.early_retransmission as u8,
             non_concessional_flow_control: self.non_concessional_flow_control as u8,
             multiplex_level: self.multiplex_level,
             update_interval_millis: self.update_interval_millis,
             min_rto_millis: self.min_rto_millis,
-            window_size: self.window_size,
+            send_window_size: self.send_window_size,
+            recv_window_size: self.receive_window_size,
             enable_erasure_codec: self.erasure_codec.is_some() as u8,
             erasure_codec: self
                 .erasure_codec
@@ -308,8 +317,8 @@ impl ErasureCodecParameters {
         }
     }
 
-    pub(crate) fn to_worker_sdk(&self) -> Worker_Alpha_ErasureCodecParameters {
-        Worker_Alpha_ErasureCodecParameters {
+    pub(crate) fn to_worker_sdk(&self) -> Worker_ErasureCodecParameters {
+        Worker_ErasureCodecParameters {
             original_packet_count: self.original_packet_count,
             recovery_packet_count: self.recovery_packet_count,
             window_size: self.window_size,
@@ -330,37 +339,101 @@ impl HeartbeatParameters {
         }
     }
 
-    pub(crate) fn to_worker_sdk(&self) -> Worker_Alpha_HeartbeatParameters {
-        Worker_Alpha_HeartbeatParameters {
+    pub(crate) fn to_worker_sdk(&self) -> Worker_HeartbeatParameters {
+        Worker_HeartbeatParameters {
             interval_millis: self.interval_millis,
             timeout_millis: self.timeout_millis,
         }
     }
 }
 
+/// Parameters for configuring protocol logging. If enabled, logs all protocol
+/// messages sent and received.
+///
+/// Note that all parameters are kept private and the struct can only be initialized
+/// with default values in order to make it possible to add new parameters without a
+/// breaking change.
+///
+/// If you would like to use a method-chaining style when initializing the parameters,
+/// the [tap] crate is recommended. The examples below demonstrate this.
+///
+/// # Parameters
+///
+/// * `log_prefx: WORKER_DEFAULTS_LOG_PREFIX` - Log file names are prefixed with
+///   this prefix, are numbered, and have the extension `.log`.
+/// * `max_log_files: WORKER_DEFAULTS_MAX_LOG_FILES` - Maximum number of log files
+///   to keep. Note that logs from any previous protocol logging sessions will be
+///   overwritten.
+/// * `max_log_file_size: WORKER_DEFAULTS_MAX_LOG_FILE_SIZE_BYTES` - Once the size
+///   of a log file reaches this size, a new log file is created.
+///
+/// # Examples
+///
+/// ```
+/// use spatialos_sdk::worker::parameters::ProtocolLoggingParameters;
+/// use tap::*;
+///
+/// let params = ProtocolLoggingParameters::new()
+///     .tap(|params| params.set_prefix("log-prefix-"))
+///     .tap(|params| params.set_max_log_files(10));
+/// ```
+#[derive(Debug, Clone)]
 pub struct ProtocolLoggingParameters {
-    pub log_prefix: String,
-    pub max_log_files: u32,
-    pub max_log_file_size_bytes: u32,
+    log_prefix: CString,
+    max_log_files: u32,
+    max_log_file_size_bytes: u32,
 }
 
 impl ProtocolLoggingParameters {
-    pub fn default() -> Self {
-        ProtocolLoggingParameters {
-            log_prefix: "".to_owned(),
-            max_log_files: WORKER_DEFAULTS_MAX_LOG_FILES,
-            max_log_file_size_bytes: WORKER_DEFAULTS_MAX_LOG_FILE_SIZE_BYTES,
-        }
+    pub fn new() -> Self {
+        Default::default()
     }
 
-    pub(crate) fn to_worker_sdk(&self) -> Worker_ProtocolLoggingParameters {
-        let log_prefix_cstr =
-            CString::new(self.log_prefix.clone()).expect("Received 0 byte in supplied log prefix.");
+    /// Sets the prefix string to be used for log file names.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if `prefix` contains a 0 byte. This is a requirement imposed
+    /// by the underlying SpatialOS API.
+    pub fn set_prefix<T: AsRef<str>>(&mut self, prefix: T) {
+        self.log_prefix = CString::new(prefix.as_ref()).expect("`prefix` contained a null byte");
+    }
 
+    /// Sets the maximum number of log files to keep.
+    pub fn set_max_log_files(&mut self, max_log_files: u32) {
+        self.max_log_files = max_log_files;
+    }
+
+    /// Sets the maximum size in bytes that a single log file can be.
+    ///
+    /// Once an individual log file exceeds this size, a new file will be created.
+    pub fn set_max_log_file_size(&mut self, max_file_size: u32) {
+        self.max_log_file_size_bytes = max_file_size;
+    }
+
+    /// Converts the logging parameters into the equivalent C API type.
+    ///
+    /// # Safety
+    ///
+    /// The returned `Worker_ProtocolLoggingParameters` borrows data owned by `self`,
+    /// and therefore must not outlive `self`.
+    pub(crate) fn to_worker_sdk(&self) -> Worker_ProtocolLoggingParameters {
         Worker_ProtocolLoggingParameters {
-            log_prefix: log_prefix_cstr.as_ptr(),
+            log_prefix: self.log_prefix.as_ptr(),
             max_log_files: self.max_log_files,
             max_log_file_size_bytes: self.max_log_file_size_bytes,
+        }
+    }
+}
+
+impl Default for ProtocolLoggingParameters {
+    fn default() -> Self {
+        ProtocolLoggingParameters {
+            log_prefix: CStr::from_bytes_with_nul(&WORKER_DEFAULTS_LOG_PREFIX[..])
+                .unwrap()
+                .to_owned(),
+            max_log_files: WORKER_DEFAULTS_MAX_LOG_FILES,
+            max_log_file_size_bytes: WORKER_DEFAULTS_MAX_LOG_FILE_SIZE_BYTES,
         }
     }
 }
