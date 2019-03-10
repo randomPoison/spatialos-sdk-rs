@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use quote::{quote, ToTokens, TokenStreamExt};
+use proc_quote::{quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 

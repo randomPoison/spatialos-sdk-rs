@@ -1,6 +1,6 @@
 use crate::schema_bundle::*;
 use proc_macro2::TokenStream;
-use quote::*;
+use proc_quote::*;
 use std::collections::BTreeMap;
 use syn::Ident;
 
@@ -24,6 +24,23 @@ pub fn generate(
     };
     let default_module = Module::new(prelude);
 
+    let spatialos_sdk = if package == "improbable" {
+        quote! { crate }
+    } else {
+        quote! { spatialos_sdk }
+    };
+
+    // Define variables for commonly-referenced types so that we don't have to type
+    // out the fully-qualified paths every time.
+    let schema_component_data =
+        quote! { #spatialos_sdk::worker::internal::schema::SchemaComponentData };
+    let schema_component_update =
+        quote! { #spatialos_sdk::worker::internal::schema::SchemaComponentUpdate };
+    let schema_command_request =
+        quote! { #spatialos_sdk::worker::internal::schema::SchemaCommandRequest };
+    let schema_command_response =
+        quote! { #spatialos_sdk::worker::internal::schema::SchemaCommandResponse };
+
     // Track all generated modules in a `BTreeMap` in order to get deterministic
     // iteration ordering, which is useful when doing diffs when testing.
     let mut modules = BTreeMap::new();
@@ -35,7 +52,7 @@ pub fn generate(
         .for_each(|component_def| {
             let ident = Ident::new(&component_def.identifier.name, null_span);
 
-            let generated = match &component_def.data_definition {
+            let struct_definition = match &component_def.data_definition {
                 ComponentDataDefinition::Inline(fields) => {
                     let fields = fields.iter().map(|field_def| {
                         let ident = Ident::new(&field_def.identifier.name, null_span);
@@ -46,7 +63,7 @@ pub fn generate(
                     });
 
                     quote! {
-                        struct #ident {
+                        pub struct #ident {
                             #( pub #fields ),*
                         }
                     }
@@ -55,14 +72,66 @@ pub fn generate(
                 ComponentDataDefinition::TypeReference(type_reference) => {
                     let ty_ref = type_reference.quotable(&bundle);
                     quote! {
-                        struct #ident(#ty_ref);
+                        pub struct #ident(#ty_ref);
+                    }
+                }
+            };
+
+            let component_id = component_def.component_id;
+            let impls = quote! {
+                impl #spatialos_sdk::worker::component::Component for #ident {
+                    type Update = Update;
+                    type CommandRequest = CommandRequest;
+                    type CommandResponse = CommandResponse;
+
+                    const ID: #spatialos_sdk::worker::component::ComponentId = #component_id;
+
+                    fn from_data(_data: &#schema_component_data) -> Result<Self, String> {
+                        unimplemented!()
+                    }
+
+                    fn from_update(_update: &#schema_component_update) -> Result<Self::Update, String> {
+                        unimplemented!()
+                    }
+
+                    fn from_request(_request: &#schema_command_request) -> Result<Self::CommandRequest, String> {
+                        unimplemented!()
+                    }
+
+                    fn from_response(_response: &#schema_command_response) -> Result<Self::CommandResponse, String> {
+                        unimplemented!()
+                    }
+
+                    fn to_data(_data: &Self) -> Result<#schema_component_data, String> {
+                        unimplemented!()
+                    }
+
+                    fn to_update(_update: &Self::Update) -> Result<#schema_component_update, String> {
+                        unimplemented!()
+                    }
+
+                    fn to_request(_request: &Self::CommandRequest) -> Result<#schema_command_request, String> {
+                        unimplemented!()
+                    }
+
+                    fn to_response(_response: &Self::CommandResponse) -> Result<#schema_command_response, String> {
+                        unimplemented!()
+                    }
+
+                    fn get_request_command_index(_request: &Self::CommandRequest) -> u32 {
+                        unimplemented!()
+                    }
+
+                    fn get_response_command_index(_response: &Self::CommandResponse) -> u32 {
+                        unimplemented!()
                     }
                 }
             };
 
             let module_path = component_def.identifier.module_path();
             let module = get_submodule(&mut modules, module_path, &default_module);
-            module.items.push(generated);
+            module.items.push(struct_definition);
+            module.items.push(impls);
         });
 
     bundle
@@ -81,7 +150,7 @@ pub fn generate(
             });
 
             let generated = quote! {
-                struct #ident {
+                pub struct #ident {
                     #( pub #fields ),*
                 }
             };
@@ -100,7 +169,7 @@ pub fn generate(
             let values = &enum_def.value_definitions;
 
             let generated = quote! {
-                enum #ident {
+                pub enum #ident {
                     #( #values ),*
                 }
             };
@@ -198,7 +267,7 @@ impl ToTokens for Module {
 
         for item in &self.items {
             tokens.append_all(quote! {
-                pub #item
+                #item
             });
         }
     }

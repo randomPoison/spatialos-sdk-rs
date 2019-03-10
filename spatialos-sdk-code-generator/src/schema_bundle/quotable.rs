@@ -1,6 +1,6 @@
 use crate::schema_bundle;
 use proc_macro2::TokenStream;
-use quote::*;
+use proc_quote::*;
 
 pub enum FieldTypeDefinition<'a> {
     Singular(ValueTypeReference<'a>),
