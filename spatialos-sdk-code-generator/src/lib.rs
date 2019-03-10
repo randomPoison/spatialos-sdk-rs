@@ -2,6 +2,7 @@ use crate::schema_bundle::*;
 use proc_macro2::TokenStream;
 use quote::*;
 use std::collections::BTreeMap;
+use syn::Ident;
 
 pub mod schema_bundle;
 
@@ -32,12 +33,12 @@ pub fn generate(
         .iter()
         .filter(|def| def.identifier.qualified_name.starts_with(package))
         .for_each(|component_def| {
-            let ident = syn::Ident::new(&component_def.identifier.name, null_span);
+            let ident = Ident::new(&component_def.identifier.name, null_span);
 
             let generated = match &component_def.data_definition {
                 ComponentDataDefinition::Inline(fields) => {
                     let fields = fields.iter().map(|field_def| {
-                        let ident = syn::Ident::new(&field_def.identifier.name, null_span);
+                        let ident = Ident::new(&field_def.identifier.name, null_span);
                         let ty = field_def.ty.quotable(&bundle);
                         quote! {
                             #ident: #ty
@@ -69,10 +70,10 @@ pub fn generate(
         .iter()
         .filter(|def| def.identifier.qualified_name.starts_with(package))
         .for_each(|type_def| {
-            let ident = syn::Ident::new(&type_def.identifier.name, null_span);
+            let ident = Ident::new(&type_def.identifier.name, null_span);
 
             let fields = type_def.field_definitions.iter().map(|field_def| {
-                let ident = syn::Ident::new(&field_def.identifier.name, null_span);
+                let ident = Ident::new(&field_def.identifier.name, null_span);
                 let ty = field_def.ty.quotable(&bundle);
                 quote! {
                     #ident: #ty
@@ -110,7 +111,7 @@ pub fn generate(
         });
 
     // Generate the code for each of the modules.
-    let module_names = modules.keys();
+    let module_names = modules.keys().map(|name| Ident::new(name, null_span));
     let modules = modules.values();
     let raw_generated = quote! {
         #(
@@ -149,8 +150,11 @@ where
     stdin.write_all(module.into().as_bytes())?;
 
     let output = child.wait_with_output()?;
-    let formatted = str::from_utf8(&output.stdout[..])?.into();
+    if !output.status.success() {
+        return Err("Failed to format the code I guess".into());
+    }
 
+    let formatted = str::from_utf8(&output.stdout[..])?.into();
     Ok(formatted)
 }
 
