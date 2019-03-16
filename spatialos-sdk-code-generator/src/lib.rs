@@ -1,4 +1,5 @@
 use crate::schema_bundle::*;
+use heck::SnekCase;
 use proc_macro2::TokenStream;
 use proc_quote::*;
 use std::collections::BTreeMap;
@@ -52,6 +53,9 @@ pub fn generate(
         .for_each(|component_def| {
             let ident = Ident::new(&component_def.identifier.name, null_span);
 
+            let submodule_name = component_def.identifier.name.to_snek_case();
+            let submodule_ident = Ident::new(&submodule_name, null_span);
+
             let struct_definition = match &component_def.data_definition {
                 ComponentDataDefinition::Inline(fields) => {
                     let fields = fields.iter().map(|field_def| {
@@ -80,9 +84,9 @@ pub fn generate(
             let component_id = component_def.component_id;
             let impls = quote! {
                 impl #spatialos_sdk::worker::component::Component for #ident {
-                    type Update = Update;
-                    type CommandRequest = CommandRequest;
-                    type CommandResponse = CommandResponse;
+                    type Update = #submodule_ident::Update;
+                    type CommandRequest = #submodule_ident::CommandRequest;
+                    type CommandResponse = #submodule_ident::CommandResponse;
 
                     const ID: #spatialos_sdk::worker::component::ComponentId = #component_id;
 
@@ -128,10 +132,19 @@ pub fn generate(
                 }
             };
 
+            let associated_types = quote! {
+                pub struct Update;
+                pub enum CommandRequest {}
+                pub enum CommandResponse {}
+            };
+
             let module_path = component_def.identifier.module_path();
             let module = get_submodule(&mut modules, module_path, &default_module);
             module.items.push(struct_definition);
             module.items.push(impls);
+
+            let submodule = get_submodule(&mut module.modules, std::iter::once(submodule_name), &default_module);
+            submodule.items.push(associated_types);
         });
 
     bundle
@@ -184,6 +197,7 @@ pub fn generate(
     let modules = modules.values();
     let raw_generated = quote! {
         #(
+            #[allow(unused_imports)]
             pub mod #module_names {
                 #modules
             }
