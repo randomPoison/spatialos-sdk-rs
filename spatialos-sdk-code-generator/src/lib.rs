@@ -84,6 +84,7 @@ pub fn generate(
                     });
 
                     quote! {
+                        #[derive(Debug, Clone)]
                         pub struct #ident {
                             #( pub #fields ),*
                         }
@@ -93,6 +94,7 @@ pub fn generate(
                 ComponentDataDefinition::TypeReference(type_reference) => {
                     let ty_ref = type_reference.quotable(context);
                     quote! {
+                        #[derive(Debug, Clone)]
                         pub struct #ident(#ty_ref);
                     }
                 }
@@ -150,8 +152,13 @@ pub fn generate(
             };
 
             let associated_types = quote! {
+                #[derive(Debug, Clone)]
                 pub struct Update;
+
+                #[derive(Debug, Clone)]
                 pub enum CommandRequest {}
+
+                #[derive(Debug, Clone)]
                 pub enum CommandResponse {}
             };
 
@@ -181,6 +188,7 @@ pub fn generate(
             });
 
             let generated = quote! {
+                #[derive(Debug, Clone)]
                 pub struct #ident {
                     #( pub #fields ),*
                 }
@@ -201,6 +209,7 @@ pub fn generate(
             let values = &enum_def.value_definitions;
 
             let generated = quote! {
+                #[derive(Debug, Clone)]
                 pub enum #ident {
                     #( #values ),*
                 }
