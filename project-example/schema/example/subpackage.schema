@@ -1,0 +1,8 @@
+package example.subpackage;
+
+import "example.schema";
+
+component YetAnotherComponent {
+    id = 1004;
+    data example.SomeData;
+}

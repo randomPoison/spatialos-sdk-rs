@@ -1,4 +1,4 @@
-use crate::schema_bundle;
+use crate::{schema_bundle, Context};
 use proc_macro2::TokenStream;
 use proc_quote::*;
 
@@ -57,7 +57,7 @@ impl<'a> ToTokens for ValueTypeReference<'a> {
 }
 
 pub struct TypeReference<'a> {
-    pub(crate) bundle: &'a schema_bundle::SchemaBundleV1,
+    pub(crate) context: Context<'a>,
     pub(crate) qualified_name: &'a str,
 }
 
@@ -65,18 +65,19 @@ impl<'a> ToTokens for TypeReference<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         // Look up the declaration for the type being referenced.
         let definition = self
+            .context
             .bundle
             .type_definitions
             .iter()
             .find(|def| def.identifier.qualified_name == self.qualified_name)
             .expect("Type reference couldn't be resolved");
 
-        tokens.append_all(definition.identifier.reference_path());
+        tokens.append_all(definition.identifier.reference_path(self.context));
     }
 }
 
 pub struct EnumReference<'a> {
-    pub(crate) bundle: &'a schema_bundle::SchemaBundleV1,
+    pub(crate) context: Context<'a>,
     pub(crate) qualified_name: &'a str,
 }
 
@@ -84,12 +85,13 @@ impl<'a> ToTokens for EnumReference<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         // Look up the declaration for the type being referenced.
         let definition = self
+            .context
             .bundle
             .enum_definitions
             .iter()
             .find(|def| def.identifier.qualified_name == self.qualified_name)
             .expect("Enum reference couldn't be resolved");
 
-        tokens.append_all(definition.identifier.reference_path());
+        tokens.append_all(definition.identifier.reference_path(self.context));
     }
 }

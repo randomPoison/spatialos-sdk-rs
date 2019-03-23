@@ -7,6 +7,17 @@ use syn::Ident;
 
 pub mod schema_bundle;
 
+/// Context for the current code generation process.
+///
+/// Contains the schema bundle and configuration options to be used in code
+/// generation. This struct is passed down through the code generation process so
+/// that types can easily reference each other.
+#[derive(Debug, Clone, Copy)]
+pub struct Context<'a> {
+    pub bundle: &'a SchemaBundleV1,
+    pub dependencies: &'a HashMap<&'static str, &'static str>,
+}
+
 /// Generates the Rust types from a bundle's schema information.
 ///
 /// # Parameters
@@ -25,7 +36,10 @@ pub fn generate(
     package: &str,
     dependencies: &HashMap<&'static str, &'static str>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let bundle = bundle.v1.as_ref().ok_or("Only v1 bundle is supported")?;
+    let context = Context {
+        bundle: bundle.v1.as_ref().ok_or("Only v1 bundle is supported")?,
+        dependencies,
+    };
     let null_span = proc_macro2::Span::call_site();
 
     let spatialos_sdk = if package == "improbable" {
@@ -49,7 +63,7 @@ pub fn generate(
     // iteration ordering, which is useful when doing diffs when testing.
     let mut modules = BTreeMap::new();
 
-    bundle
+    context.bundle
         .component_definitions
         .iter()
         .filter(|def| def.identifier.qualified_name.starts_with(package))
@@ -63,7 +77,7 @@ pub fn generate(
                 ComponentDataDefinition::Inline(fields) => {
                     let fields = fields.iter().map(|field_def| {
                         let ident = Ident::new(&field_def.identifier.name, null_span);
-                        let ty = field_def.ty.quotable(&bundle);
+                        let ty = field_def.ty.quotable(context);
                         quote! {
                             #ident: #ty
                         }
@@ -77,7 +91,7 @@ pub fn generate(
                 }
 
                 ComponentDataDefinition::TypeReference(type_reference) => {
-                    let ty_ref = type_reference.quotable(&bundle);
+                    let ty_ref = type_reference.quotable(context);
                     quote! {
                         pub struct #ident(#ty_ref);
                     }
@@ -150,7 +164,8 @@ pub fn generate(
             submodule.contents.append_all(associated_types);
         });
 
-    bundle
+    context
+        .bundle
         .type_definitions
         .iter()
         .filter(|def| def.identifier.qualified_name.starts_with(package))
@@ -159,7 +174,7 @@ pub fn generate(
 
             let fields = type_def.field_definitions.iter().map(|field_def| {
                 let ident = Ident::new(&field_def.identifier.name, null_span);
-                let ty = field_def.ty.quotable(&bundle);
+                let ty = field_def.ty.quotable(context);
                 quote! {
                     #ident: #ty
                 }
@@ -176,7 +191,8 @@ pub fn generate(
             module.contents.append_all(generated);
         });
 
-    bundle
+    context
+        .bundle
         .enum_definitions
         .iter()
         .filter(|def| def.identifier.qualified_name.starts_with(package))

@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 
+use crate::Context;
 use proc_quote::{quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
@@ -47,12 +48,32 @@ impl Identifier {
     /// Returns the path to correctly reference the item by name.
     ///
     /// Note that the returned path is relative to the root for the generated code.
-    pub fn reference_path(&self) -> proc_macro2::TokenStream {
-        let path_string = self
+    pub fn reference_path(&self, context: Context<'_>) -> proc_macro2::TokenStream {
+        // Find the dependency package that this identifier belongs to.
+        //
+        // NOTE: We need to do a linear search here because there's no way of knowing
+        // from the identifier path alone which portion of the path represents the
+        // package name (so we can't do a direct map lookup). We need to check all of
+        // the keys in the map to see which one is a prefix of the fully-qualified
+        // identifier.
+        //
+        // TODO: This won't work correctly if there are multiple packages with
+        // overlapping names, e.g. `foo` and `foo.bar`. If this happens, it's
+        // possible that the identifier will be treated as belonging to `foo` when it
+        // really belongs to `foo.bar`. We need to instead find the *longest* valid
+        // prefix (or a smarter lookup system entirely).
+        let (&key, &value) = context
+            .dependencies
+            .iter()
+            .find(|&(key, _)| self.qualified_name.starts_with(key))
+            .expect("No package found for identifier");
+
+        let path_suffix = self
             .module_path()
             .chain(std::iter::once(self.path[self.path.len() - 1].clone()))
             .collect::<Vec<_>>()
             .join("::");
+        let path_string = format!("{}::{}", value, path_suffix);
         syn::parse_str(&path_string).unwrap()
     }
 }
@@ -111,9 +132,9 @@ pub struct TypeReference {
 }
 
 impl TypeReference {
-    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::TypeReference<'a> {
+    pub fn quotable<'a>(&'a self, context: Context<'a>) -> quotable::TypeReference<'a> {
         quotable::TypeReference {
-            bundle,
+            context,
             qualified_name: &*self.qualified_name,
         }
     }
@@ -126,9 +147,9 @@ pub struct EnumReference {
 }
 
 impl EnumReference {
-    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::EnumReference<'a> {
+    pub fn quotable<'a>(&'a self, context: Context<'a>) -> quotable::EnumReference<'a> {
         quotable::EnumReference {
-            bundle,
+            context,
             qualified_name: &*self.qualified_name,
         }
     }
@@ -155,14 +176,14 @@ pub enum ValueTypeReference {
 }
 
 impl ValueTypeReference {
-    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::ValueTypeReference<'a> {
+    pub fn quotable<'a>(&'a self, context: Context<'a>) -> quotable::ValueTypeReference<'a> {
         match self {
             ValueTypeReference::Primitive(prim) => quotable::ValueTypeReference::Primitive(*prim),
             ValueTypeReference::Enum(enum_ref) => {
-                quotable::ValueTypeReference::Enum(enum_ref.quotable(bundle))
+                quotable::ValueTypeReference::Enum(enum_ref.quotable(context))
             }
             ValueTypeReference::Type(type_ref) => {
-                quotable::ValueTypeReference::Type(type_ref.quotable(bundle))
+                quotable::ValueTypeReference::Type(type_ref.quotable(context))
             }
         }
     }
@@ -342,23 +363,23 @@ pub enum FieldTypeDefinition {
 }
 
 impl FieldTypeDefinition {
-    pub fn quotable<'a>(&'a self, bundle: &'a SchemaBundleV1) -> quotable::FieldTypeDefinition<'a> {
+    pub fn quotable<'a>(&'a self, context: Context<'a>) -> quotable::FieldTypeDefinition<'a> {
         match self {
             FieldTypeDefinition::Singular { ty } => {
-                quotable::FieldTypeDefinition::Singular(ty.quotable(bundle))
+                quotable::FieldTypeDefinition::Singular(ty.quotable(context))
             }
             FieldTypeDefinition::Optional { inner_type } => {
-                quotable::FieldTypeDefinition::Optional(inner_type.quotable(bundle))
+                quotable::FieldTypeDefinition::Optional(inner_type.quotable(context))
             }
             FieldTypeDefinition::List { inner_type } => {
-                quotable::FieldTypeDefinition::List(inner_type.quotable(bundle))
+                quotable::FieldTypeDefinition::List(inner_type.quotable(context))
             }
             FieldTypeDefinition::Map {
                 key_type,
                 value_type,
             } => quotable::FieldTypeDefinition::Map {
-                key: key_type.quotable(bundle),
-                value: value_type.quotable(bundle),
+                key: key_type.quotable(context),
+                value: value_type.quotable(context),
             },
         }
     }
