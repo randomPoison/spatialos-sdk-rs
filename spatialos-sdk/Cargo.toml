@@ -19,6 +19,7 @@ structopt = "0.2.14"
 tap = "0.3.0"
 
 [build-dependencies]
+cargo-spatial = { path = "../cargo-spatial" }
+maplit = "1.0.1"
 serde_json = "1.0.39"
 spatialos-sdk-code-generator = { path = "../spatialos-sdk-code-generator" }
-cargo-spatial = { path = "../cargo-spatial" }

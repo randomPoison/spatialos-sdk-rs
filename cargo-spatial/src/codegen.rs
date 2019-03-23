@@ -1,9 +1,6 @@
 use crate::config::Config;
 use log::*;
-use std::ffi::OsString;
-use std::fs;
-use std::path::*;
-use std::process::Command;
+use std::{collections::HashMap, ffi::OsString, fs, path::*, process::Command};
 use tap::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,7 +89,10 @@ pub fn compile_schemas(
 }
 
 /// Performs code generation for a build script.
-pub fn build(package: &str, prelude: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn build(
+    package: &str,
+    dependencies: &HashMap<&'static str, &'static str>,
+) -> Result<(), Box<dyn std::error::Error>> {
     use std::{env, fs::File};
 
     let config = Config::load()?;
@@ -114,7 +114,7 @@ pub fn build(package: &str, prelude: &[&str]) -> Result<(), Box<dyn std::error::
     let bundle = serde_json::from_reader(bundle_file).expect("Failed to deserialize bundle.json");
 
     // Use the code generator to generate the Rust types from the schema bundle.
-    let generated = spatialos_sdk_code_generator::generate(&bundle, package, prelude)
+    let generated = spatialos_sdk_code_generator::generate(&bundle, package, dependencies)
         .map_err(|_| "Failed to generate code from bundle")?;
 
     let dest_path = Path::new(&out_dir).join("generated.rs");

@@ -17,3 +17,4 @@ tap = "0.3.0"
 
 [build-dependencies]
 cargo-spatial = { path = "../cargo-spatial" }
+maplit = "1.0.1"

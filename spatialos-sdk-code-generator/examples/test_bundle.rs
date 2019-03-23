@@ -1,3 +1,4 @@
+use maplit::*;
 use std::str;
 
 static TEST_BUNDLE: &[u8] = include_bytes!("../data/bundle.json");
@@ -9,12 +10,15 @@ fn main() {
     let example_generated = spatialos_sdk_code_generator::generate(
         &bundle,
         "example",
-        &["crate::improbable", "crate::example"],
+        &hashmap! { "improbable" => "crate::improbable", "example" => "crate::example" },
     )
     .expect("Code generation failed");
-    let improbable_generated =
-        spatialos_sdk_code_generator::generate(&bundle, "improbable", &["crate::improbable"])
-            .expect("Code generation failed");
+    let improbable_generated = spatialos_sdk_code_generator::generate(
+        &bundle,
+        "improbable",
+        &hashmap! { "improbable" => "crate::improbable" },
+    )
+    .expect("Code generation failed");
     println!("// Generated from the improbable package.");
     println!("{}", improbable_generated);
     println!("// Generated from the example package.");
