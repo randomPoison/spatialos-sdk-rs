@@ -68,3 +68,9 @@ component Rotate {
     double center_y = 3;
     double center_z = 4;
 }
+
+component Subpackage {
+    id = 1005;
+
+    string some_field = 1;
+}
