@@ -6,3 +6,8 @@ component YetAnotherComponent {
     id = 1004;
     data example.SomeData;
 }
+
+component Update {
+    id = 106;
+    data example.SomeData;
+}
