@@ -103,9 +103,9 @@ pub fn generate(
             let component_id = component_def.component_id;
             let impls = quote! {
                 impl #spatialos_sdk::worker::component::Component for #ident {
-                    type Update = #submodule_ident::Update;
-                    type CommandRequest = #submodule_ident::CommandRequest;
-                    type CommandResponse = #submodule_ident::CommandResponse;
+                    type Update = associated_data::#submodule_ident::Update;
+                    type CommandRequest = associated_data::#submodule_ident::CommandRequest;
+                    type CommandResponse = associated_data::#submodule_ident::CommandResponse;
 
                     const ID: #spatialos_sdk::worker::component::ComponentId = #component_id;
 
@@ -197,7 +197,7 @@ pub fn generate(
 
             // Put the associated data types for the component in a submodule named
             // after the component.
-            let submodule = get_submodule(&mut module.modules, std::iter::once(submodule_name));
+            let submodule = get_submodule(&mut module.modules, std::iter::once("associated_data".into()).chain(std::iter::once(submodule_name)));
             submodule.contents.append_all(update_type);
             submodule.contents.append_all(command_types);
         });
