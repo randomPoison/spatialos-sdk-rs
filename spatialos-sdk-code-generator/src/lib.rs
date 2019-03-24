@@ -149,6 +149,12 @@ pub fn generate(
                         unimplemented!()
                     }
                 }
+
+                impl #spatialos_sdk::worker::component::ComponentData<#ident> for #ident {
+                    fn merge(&mut self, update: <#ident as #spatialos_sdk::worker::component::Component>::Update) {
+                        unimplemented!();
+                    }
+                }
             };
 
             let associated_types = quote! {
