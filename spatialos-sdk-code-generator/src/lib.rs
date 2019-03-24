@@ -157,10 +157,37 @@ pub fn generate(
                 }
             };
 
-            let associated_types = quote! {
-                #[derive(Debug, Clone)]
-                pub struct Update;
+            let module_path = component_def.identifier.module_path();
+            let module = get_submodule(&mut modules, module_path);
+            module.contents.append_all(struct_definition);
+            module.contents.append_all(impls);
 
+            // Generate definitions for associated types.
+            let update_type = {
+                let fields = match &component_def.data_definition {
+                    ComponentDataDefinition::Inline(fields) => fields,
+
+                    ComponentDataDefinition::TypeReference(type_reference) =>
+                        &context.bundle.get_referenced_type(type_reference).field_definitions
+                };
+
+                let fields = fields.iter().map(|field_def| {
+                    let ident = Ident::new(&field_def.identifier.name, null_span);
+                    let ty = field_def.ty.quotable(context);
+                    quote! {
+                        #ident: Option<#ty>
+                    }
+                });
+
+                quote! {
+                    #[derive(Debug, Clone, Default)]
+                    pub struct Update {
+                        #( pub #fields ),*
+                    }
+                }
+            };
+
+            let command_types = quote! {
                 #[derive(Debug, Clone)]
                 pub enum CommandRequest {}
 
@@ -168,13 +195,11 @@ pub fn generate(
                 pub enum CommandResponse {}
             };
 
-            let module_path = component_def.identifier.module_path();
-            let module = get_submodule(&mut modules, module_path);
-            module.contents.append_all(struct_definition);
-            module.contents.append_all(impls);
-
+            // Put the associated data types for the component in a submodule named
+            // after the component.
             let submodule = get_submodule(&mut module.modules, std::iter::once(submodule_name));
-            submodule.contents.append_all(associated_types);
+            submodule.contents.append_all(update_type);
+            submodule.contents.append_all(command_types);
         });
 
     context

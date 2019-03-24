@@ -454,6 +454,15 @@ pub struct SchemaBundleV1 {
     pub component_definitions: Vec<ComponentDefinition>,
 }
 
+impl SchemaBundleV1 {
+    pub fn get_referenced_type(&self, type_ref: &TypeReference) -> &TypeDefinition {
+        self.type_definitions
+            .iter()
+            .find(|type_def| type_def.identifier.qualified_name == type_ref.qualified_name)
+            .unwrap_or_else(|| panic!("Cannot find type for reference {}", type_ref.qualified_name))
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceReference {
