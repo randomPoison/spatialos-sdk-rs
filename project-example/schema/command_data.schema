@@ -1,0 +1,5 @@
+package example.command_data;
+
+type NestedType {
+    string some_field = 1;
+}
