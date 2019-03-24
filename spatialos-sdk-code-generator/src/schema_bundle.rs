@@ -48,7 +48,9 @@ impl Identifier {
     /// Returns the path to correctly reference the item by name.
     ///
     /// Note that the returned path is relative to the root for the generated code.
-    pub fn reference_path(&self, context: Context<'_>) -> proc_macro2::TokenStream {
+    pub fn reference_path(&self, dependencies: &HashMap<&'static str, &'static str>) -> String {
+        dbg!(self);
+
         // Find the dependency package that this identifier belongs to.
         //
         // NOTE: We need to do a linear search here because there's no way of knowing
@@ -57,24 +59,34 @@ impl Identifier {
         // the keys in the map to see which one is a prefix of the fully-qualified
         // identifier.
         //
-        // TODO: This won't work correctly if there are multiple packages with
-        // overlapping names, e.g. `foo` and `foo.bar`. If this happens, it's
+        // NOTE: We do the extra fold step (instead of just returning the first match)
+        // in case there are multiple packages with overlapping names, e.g. `foo` and
+        // `foo.bar`. If we were to use the first matching prefix that we find, it's
         // possible that the identifier will be treated as belonging to `foo` when it
         // really belongs to `foo.bar`. We need to instead find the *longest* valid
-        // prefix (or a smarter lookup system entirely).
-        let (&key, &value) = context
-            .dependencies
+        // prefix, which is handling by folding all matching prefixes and returning the
+        // longest one.
+        let (_, path_prefix) = dbg!(dependencies)
             .iter()
-            .find(|&(key, _)| self.qualified_name.starts_with(key))
-            .expect("No package found for identifier");
+            .filter(|&(key, _)| self.qualified_name.starts_with(key))
+            .fold(None, |longest, (&key, &value)| match longest {
+                None => Some((key, value)),
+                Some((longest_key, longest_value)) => {
+                    if key.len() > longest_key.len() {
+                        Some((key, value))
+                    } else {
+                        Some((longest_key, longest_value))
+                    }
+                }
+            })
+            .unwrap_or_else(|| panic!("No dependency definition found for {}, make sure you have specified all dependencies", self.qualified_name));
 
         let path_suffix = self
             .module_path()
             .chain(std::iter::once(self.path[self.path.len() - 1].clone()))
             .collect::<Vec<_>>()
             .join("::");
-        let path_string = format!("{}::{}", value, path_suffix);
-        syn::parse_str(&path_string).unwrap()
+        format!("{}::{}", path_prefix, path_suffix)
     }
 }
 
@@ -465,4 +477,41 @@ pub struct SchemaBundle {
 
 pub fn load_bundle(data: &str) -> Result<SchemaBundle, serde_json::Error> {
     serde_json::from_str::<SchemaBundle>(data)
+}
+
+#[cfg(test)]
+mod tests {
+    /// Tests that `Identifier::reference_path` correctly handles nested package
+    /// names, e.g. that if packages `foo` and `foo.bar` are both listed as
+    /// dependencies, it'll correctly identify `foo.bar.SomeType` as being part of
+    /// package `foo.bar`.
+    #[test]
+    fn reference_path_construction() {
+        use maplit::hashmap;
+
+        let identifier = crate::schema_bundle::Identifier {
+            qualified_name: "foo.bar.baz.quux.SomeType".into(),
+            name: "SomeType".into(),
+            path: vec![
+                "foo".into(),
+                "bar".into(),
+                "baz".into(),
+                "quux".into(),
+                "SomeType".into(),
+            ],
+        };
+
+        let dependencies = hashmap! {
+            "foo" => "foo::schema",
+            "foo.bar" => "bar::schema",
+            "foo.bar.baz" => "baz::schema",
+            "foo.bar.baz.quux" => "quux::schema",
+        };
+
+        let result = identifier.reference_path(&dependencies);
+        assert_eq!(
+            result.to_string(),
+            "quux::schema::foo::bar::baz::quux::SomeType"
+        );
+    }
 }

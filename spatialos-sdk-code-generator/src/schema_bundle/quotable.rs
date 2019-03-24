@@ -72,7 +72,14 @@ impl<'a> ToTokens for TypeReference<'a> {
             .find(|def| def.identifier.qualified_name == self.qualified_name)
             .expect("Type reference couldn't be resolved");
 
-        tokens.append_all(definition.identifier.reference_path(self.context));
+        tokens.append_all(
+            syn::parse_str::<TokenStream>(
+                &definition
+                    .identifier
+                    .reference_path(&self.context.dependencies),
+            )
+            .unwrap(),
+        );
     }
 }
 
@@ -92,6 +99,13 @@ impl<'a> ToTokens for EnumReference<'a> {
             .find(|def| def.identifier.qualified_name == self.qualified_name)
             .expect("Enum reference couldn't be resolved");
 
-        tokens.append_all(definition.identifier.reference_path(self.context));
+        tokens.append_all(
+            syn::parse_str::<TokenStream>(
+                &definition
+                    .identifier
+                    .reference_path(&self.context.dependencies),
+            )
+            .unwrap(),
+        );
     }
 }

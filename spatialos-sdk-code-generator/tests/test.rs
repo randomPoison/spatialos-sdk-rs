@@ -11,7 +11,10 @@ fn deserialize_bundle() {
     let _ = generate(
         &bundle,
         "example",
-        &hashmap! { "exampe" => "crate::schema" },
+        &hashmap! {
+            "improbable" => "spatialos_sdk::schema",
+            "example" => "crate::schema",
+        },
     )
     .expect("Code generation failed");
 }

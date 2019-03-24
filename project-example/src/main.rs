@@ -196,7 +196,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                 // state.
                 c.send_component_update::<example::Rotate>(
                     entity_id,
-                    example::RotateUpdate {
+                    example::rotate::Update {
                         angle: Some(rotate.angle),
                         ..Default::default()
                     },
@@ -207,7 +207,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                 // component.
                 c.send_component_update::<improbable::Position>(
                     entity_id,
-                    improbable::PositionUpdate {
+                    improbable::position::Update {
                         coords: Some(improbable::Coordinates {
                             x: rotate.angle.sin() * rotate.radius + rotate.center_x,
                             y: rotate.center_y,
