@@ -16,6 +16,40 @@ pub struct Identifier {
 }
 
 impl Identifier {
+    /// Returns the subset of `qualified_name` that represents the package of the
+    /// identifier.
+    ///
+    /// For example, if the qualified name of the item is "foo.bar.Baz", that would
+    /// mean that the item is named `Baz` and is in the package `foo.bar`. This
+    /// method would therefore return "foo.bar".
+    pub fn package_name(&self) -> &str {
+        let first_capital = self
+            .qualified_name
+            .char_indices()
+            .find(|&(_, character)| character.is_alphanumeric() && !character.is_lowercase())
+            .map(|(index, _)| index)
+            .unwrap_or_else(|| self.qualified_name.len());
+
+        assert!(
+            first_capital > 0,
+            "Index of the first capital letter in {} was 0",
+            self.qualified_name
+        );
+
+        // Return the subslice of `qualified_name` up to the '.' character immediately
+        // before the first capital letter. Since our search only returned the index of the
+        // first capital letter, we need to subtract one from `first_capital` to exclude the
+        // '.' from the returned string. Performing unchecked subtration on the index is
+        // valid here for a couple of reasons:
+        //
+        // * `first_captial` cannot be zero since the qualified name will always start with
+        //   the package name and the package name must start with a lowercase letter.
+        // * The first capital letter in the qualified will always follow a '.' character,
+        //   so the byte index immediately before `first_capital` will still be a valid
+        //   character index.
+        &self.qualified_name[..first_capital - 1]
+    }
+
     /// Returns the subset of `path` that represents the package of the identifier.
     ///
     /// For example, if the qualified name of the item is "foo.bar.Baz", that would
@@ -490,6 +524,45 @@ pub fn load_bundle(data: &str) -> Result<SchemaBundle, serde_json::Error> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn package_name() {
+        let identifier = crate::schema_bundle::Identifier {
+            qualified_name: "foo.SomeType".into(),
+            name: "SomeType".into(),
+            path: vec!["foo".into(), "SomeType".into()],
+        };
+
+        assert_eq!("foo", identifier.package_name());
+    }
+
+    #[test]
+    fn package_name_underscore() {
+        let identifier = crate::schema_bundle::Identifier {
+            qualified_name: "foo_bar.SomeType".into(),
+            name: "SomeType".into(),
+            path: vec!["foo_bar".into(), "SomeType".into()],
+        };
+
+        assert_eq!("foo_bar", identifier.package_name());
+    }
+
+    #[test]
+    fn long_package_name() {
+        let identifier = crate::schema_bundle::Identifier {
+            qualified_name: "foo.bar.baz.quux.SomeType".into(),
+            name: "SomeType".into(),
+            path: vec![
+                "foo".into(),
+                "bar".into(),
+                "baz".into(),
+                "quux".into(),
+                "SomeType".into(),
+            ],
+        };
+
+        assert_eq!("foo.bar.baz.quux", identifier.package_name());
+    }
+
     /// Tests that `Identifier::reference_path` correctly handles nested package
     /// names, e.g. that if packages `foo` and `foo.bar` are both listed as
     /// dependencies, it'll correctly identify `foo.bar.SomeType` as being part of
