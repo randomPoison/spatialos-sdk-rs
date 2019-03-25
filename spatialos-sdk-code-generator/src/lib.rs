@@ -7,6 +7,8 @@ use syn::Ident;
 
 pub mod schema_bundle;
 
+static NESTED_ITEMS_MODULE_NAME: &str = "nested_items";
+
 /// Context for the current code generation process.
 ///
 /// Contains the schema bundle and configuration options to be used in code
@@ -66,7 +68,7 @@ pub fn generate(
     context.bundle
         .component_definitions
         .iter()
-        .filter(|def| def.identifier.qualified_name.starts_with(package))
+        .filter(|def| def.identifier.package_name() == package)
         .for_each(|component_def| {
             let ident = Ident::new(&component_def.identifier.name, null_span);
 
@@ -206,7 +208,7 @@ pub fn generate(
         .bundle
         .type_definitions
         .iter()
-        .filter(|def| def.identifier.qualified_name.starts_with(package))
+        .filter(|def| def.identifier.package_name() == package)
         .for_each(|type_def| {
             let ident = Ident::new(&type_def.identifier.name, null_span);
 
@@ -234,7 +236,7 @@ pub fn generate(
         .bundle
         .enum_definitions
         .iter()
-        .filter(|def| def.identifier.qualified_name.starts_with(package))
+        .filter(|def| def.identifier.package_name() == package)
         .for_each(|enum_def| {
             let ident = syn::Ident::new(&enum_def.identifier.name, null_span);
             let values = &enum_def.value_definitions;

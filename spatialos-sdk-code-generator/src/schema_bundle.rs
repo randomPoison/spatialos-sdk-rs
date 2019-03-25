@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use crate::Context;
+use crate::{Context, NESTED_ITEMS_MODULE_NAME};
 use proc_quote::{quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
@@ -64,6 +64,21 @@ impl Identifier {
         &self.path[..first_non_lowercase]
     }
 
+    /// Returns the segment of `path` between the package path and the item name.
+    ///
+    /// For example, the identifier `foo.bar.Baz.Quux.DeeplyNestedType` would represent
+    /// a type named `DeeplyNestedType` inside a type called `Quux` inside a type called
+    /// `Baz` in a package `foo.bar`. For this identifier, this method would return
+    /// `["Baz", "Quux"]`.
+    pub fn item_path(&self) -> &[String] {
+        let first_non_lowercase = self
+            .path
+            .iter()
+            .position(|seg| !seg.chars().next().unwrap().is_lowercase())
+            .unwrap_or_else(|| self.path.len());
+        &self.path[first_non_lowercase..self.path.len() - 1]
+    }
+
     /// Returns the path elements for the item, converting elements to `snake_case`
     /// as needed to ensure that they're valid Rust module identifiers.
     ///
@@ -73,15 +88,28 @@ impl Identifier {
     /// converted to `snake_case` to adhere to Rusts style conventions for module
     /// names.
     pub fn module_path(&self) -> impl Iterator<Item = String> + '_ {
-        let len = self.path.len() - 1;
-        self.path[..len]
-            .iter()
-            .map(|seg| heck::SnekCase::to_snek_case(&**seg))
+        let item_path = self.item_path();
+        if !item_path.is_empty() {
+            self.package_path()
+                .iter()
+                .cloned()
+                .chain(std::iter::once(NESTED_ITEMS_MODULE_NAME.into()))
+                .chain(
+                    self.item_path()
+                        .iter()
+                        .map(|seg| heck::SnekCase::to_snek_case(&**seg)),
+                )
+                .collect::<Vec<_>>()
+                .into_iter()
+        } else {
+            self.package_path().to_vec().into_iter()
+        }
     }
 
     /// Returns the path to correctly reference the item by name.
     ///
-    /// Note that the returned path is relative to the root for the generated code.
+    /// The returned path is absolute, taking into account the absolute paths to
+    /// packages specified in `dependencies`.
     pub fn reference_path(&self, dependencies: &HashMap<&'static str, &'static str>) -> String {
         dbg!(self);
 
@@ -524,6 +552,8 @@ pub fn load_bundle(data: &str) -> Result<SchemaBundle, serde_json::Error> {
 
 #[cfg(test)]
 mod tests {
+    use crate::NESTED_ITEMS_MODULE_NAME;
+
     #[test]
     fn package_name() {
         let identifier = crate::schema_bundle::Identifier {
@@ -563,12 +593,50 @@ mod tests {
         assert_eq!("foo.bar.baz.quux", identifier.package_name());
     }
 
+    #[test]
+    fn module_path_simple() {
+        let identifier = crate::schema_bundle::Identifier {
+            qualified_name: "foo.SomeType".into(),
+            name: "SomeType".into(),
+            path: vec!["foo".into(), "SomeType".into()],
+        };
+
+        let actual = identifier.module_path().collect::<Vec<_>>();
+        let expected: Vec<String> = vec!["foo".into()];
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn module_path_nested() {
+        let identifier = crate::schema_bundle::Identifier {
+            qualified_name: "foo.bar.Baz.Quux.SomeType".into(),
+            name: "SomeType".into(),
+            path: vec![
+                "foo".into(),
+                "bar".into(),
+                "Baz".into(),
+                "Quux".into(),
+                "SomeType".into(),
+            ],
+        };
+
+        let path = identifier.module_path().collect::<Vec<_>>();
+        let expected: Vec<String> = vec![
+            "foo".into(),
+            "bar".into(),
+            NESTED_ITEMS_MODULE_NAME.into(),
+            "baz".into(),
+            "quux".into(),
+        ];
+        assert_eq!(expected, path);
+    }
+
     /// Tests that `Identifier::reference_path` correctly handles nested package
     /// names, e.g. that if packages `foo` and `foo.bar` are both listed as
     /// dependencies, it'll correctly identify `foo.bar.SomeType` as being part of
     /// package `foo.bar`.
     #[test]
-    fn reference_path_construction() {
+    fn reference_path_nested_package() {
         use maplit::hashmap;
 
         let identifier = crate::schema_bundle::Identifier {
