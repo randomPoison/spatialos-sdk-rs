@@ -22,7 +22,7 @@ use structopt::StructOpt;
 use tap::*;
 
 mod connection_handler;
-mod generated_code;
+pub mod generated_code;
 mod opt;
 
 fn main() {
@@ -196,7 +196,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                 // state.
                 c.send_component_update::<example::Rotate>(
                     entity_id,
-                    example::rotate::Update {
+                    example::associated_data::rotate::Update {
                         angle: Some(rotate.angle),
                         ..Default::default()
                     },
@@ -207,7 +207,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                 // component.
                 c.send_component_update::<improbable::Position>(
                     entity_id,
-                    improbable::position::Update {
+                    improbable::associated_data::position::Update {
                         coords: Some(improbable::Coordinates {
                             x: rotate.angle.sin() * rotate.radius + rotate.center_x,
                             y: rotate.center_y,
