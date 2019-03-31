@@ -87,32 +87,12 @@ pub fn generate(
             let submodule_ident = Ident::new(&submodule_name, null_span);
 
             let struct_definition = match &component_def.data_definition {
-                ComponentDataDefinition::Inline(fields) => {
-                    let fields = fields.iter().map(|field_def| {
-                        let ident = Ident::new(&field_def.identifier.name, null_span);
-                        let ty = field_def.ty.quotable(context);
-                        quote! {
-                            #ident: #ty
-                        }
-                    });
-
-                    quote! {
-                        #[derive(Debug, Clone)]
-                        pub struct #ident {
-                            #( pub #fields ),*
-                        }
-
-                        impl #spatialos_sdk::worker::component::TypeConversion for #ident {
-                            fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
-                                unimplemented!()
-                            }
-
-                            fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
-                                unimplemented!()
-                            }
-                        }
-                    }
-                }
+                ComponentDataDefinition::Inline(fields) => quote_struct(
+                    &component_def.identifier,
+                    &fields,
+                    &spatialos_sdk,
+                    context,
+                ),
 
                 ComponentDataDefinition::TypeReference(type_reference) => {
                     let ty_ref = type_reference.quotable(context);
@@ -249,32 +229,12 @@ pub fn generate(
         .iter()
         .filter(|def| def.identifier.package_name() == package)
         .for_each(|type_def| {
-            let ident = Ident::new(&type_def.identifier.name, null_span);
-
-            let fields = type_def.field_definitions.iter().map(|field_def| {
-                let ident = Ident::new(&field_def.identifier.name, null_span);
-                let ty = field_def.ty.quotable(context);
-                quote! {
-                    #ident: #ty
-                }
-            });
-
-            let generated = quote! {
-                #[derive(Debug, Clone)]
-                pub struct #ident {
-                    #( pub #fields ),*
-                }
-
-                impl #spatialos_sdk::worker::component::TypeConversion for #ident {
-                    fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
-                        unimplemented!()
-                    }
-
-                    fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
-                        unimplemented!()
-                    }
-                }
-            };
+            let generated = quote_struct(
+                &type_def.identifier,
+                &type_def.field_definitions,
+                &spatialos_sdk,
+                context,
+            );
 
             let module_path = type_def.identifier.module_path();
             let module = get_submodule(&mut modules, module_path, &default_module);
@@ -413,4 +373,34 @@ where
     }
 
     module
+}
+
+/// Quotes the definition for a struct type and creates the `TypeConversion` impl for it.
+///
+/// This logic is shared between inline component definitions and struct type definitions.
+fn quote_struct<'a>(
+    ident: &'a Identifier,
+    fields: &'a [FieldDefinition],
+    spatialos_sdk: &TokenStream,
+    context: Context<'a>,
+) -> TokenStream {
+    let ident = ident.ident();
+    let fields = fields.iter().map(|field_def| field_def.quotable(context));
+
+    quote! {
+        #[derive(Debug, Clone)]
+        pub struct #ident {
+            #( pub #fields ),*
+        }
+
+        impl #spatialos_sdk::worker::component::TypeConversion for #ident {
+            fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
+                unimplemented!()
+            }
+
+            fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
+                unimplemented!()
+            }
+        }
+    }
 }

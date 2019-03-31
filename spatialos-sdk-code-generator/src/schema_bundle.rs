@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 
 use crate::{Context, NESTED_ITEMS_MODULE_NAME};
+use proc_macro2::{Ident, Span, TokenStream};
 use proc_quote::{quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
@@ -16,6 +17,11 @@ pub struct Identifier {
 }
 
 impl Identifier {
+    /// Returns the identifier as a `proc_macro2::Ident` which can be used in quasi-quoting.
+    pub fn ident(&self) -> Ident {
+        Ident::new(&self.name, Span::call_site())
+    }
+
     /// Returns the subset of `qualified_name` that represents the package of the
     /// identifier.
     ///
@@ -408,6 +414,22 @@ pub struct FieldDefinition {
     #[serde(flatten)]
     pub ty: FieldTypeDefinition,
     pub annotations: Vec<Annotation>,
+}
+
+impl FieldDefinition {
+    pub fn quotable<'a>(&'a self, context: Context<'a>) -> quotable::FieldDefinition<'a> {
+        quotable::FieldDefinition {
+            identifier: &self.identifier,
+            field_id: self.field_id,
+            transient: self.transient,
+            ty: self.ty.quotable(context),
+            annotations: &self.annotations,
+        }
+    }
+
+    pub fn quote_deserialize_impl(&self) -> TokenStream {
+        unimplemented!()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

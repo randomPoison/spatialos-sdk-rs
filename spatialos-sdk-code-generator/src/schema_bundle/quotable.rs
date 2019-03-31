@@ -1,7 +1,27 @@
 use crate::{schema_bundle, Context};
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use proc_quote::*;
 
+#[derive(Clone, Debug)]
+pub struct FieldDefinition<'a> {
+    pub identifier: &'a schema_bundle::Identifier,
+    pub field_id: u32,
+    pub transient: bool,
+    pub ty: FieldTypeDefinition<'a>,
+    pub annotations: &'a Vec<schema_bundle::Annotation>,
+}
+
+impl<'a> ToTokens for FieldDefinition<'a> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ident = Ident::new(&self.identifier.name, Span::call_site());
+        let ty = &self.ty;
+        tokens.append_all(quote! {
+            #ident: #ty
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum FieldTypeDefinition<'a> {
     Singular(ValueTypeReference<'a>),
     Optional(ValueTypeReference<'a>),
@@ -13,7 +33,7 @@ pub enum FieldTypeDefinition<'a> {
 }
 
 impl<'a> ToTokens for FieldTypeDefinition<'a> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             FieldTypeDefinition::Singular(ty) => {
                 ty.to_tokens(tokens);
@@ -40,6 +60,7 @@ impl<'a> ToTokens for FieldTypeDefinition<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum ValueTypeReference<'a> {
     Primitive(schema_bundle::PrimitiveType),
     Enum(EnumReference<'a>),
@@ -56,6 +77,7 @@ impl<'a> ToTokens for ValueTypeReference<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct TypeReference<'a> {
     pub(crate) context: Context<'a>,
     pub(crate) qualified_name: &'a str,
@@ -83,6 +105,7 @@ impl<'a> ToTokens for TypeReference<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct EnumReference<'a> {
     pub(crate) context: Context<'a>,
     pub(crate) qualified_name: &'a str,
