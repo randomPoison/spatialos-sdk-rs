@@ -21,6 +21,8 @@
         "arguments": [
           "--worker-id",
           "${IMPROBABLE_WORKER_ID}",
+          "--log-file",
+          "${IMPROBABLE_LOG_FILE}",
           "--worker-type",
           "RustWorker",
           "receptionist",
@@ -38,6 +40,8 @@
         "arguments": [
           "--worker-id",
           "${IMPROBABLE_WORKER_ID}",
+          "--log-file",
+          "${IMPROBABLE_LOG_FILE}",
           "--worker-type",
           "RustWorker",
           "receptionist",
@@ -53,6 +57,8 @@
         "arguments": [
           "--worker-id",
           "${IMPROBABLE_WORKER_ID}",
+          "--log-file",
+          "${IMPROBABLE_LOG_FILE}",
           "--worker-type",
           "RustWorker",
           "receptionist",
@@ -68,6 +74,8 @@
         "arguments": [
           "--worker-id",
           "${IMPROBABLE_WORKER_ID}",
+          "--log-file",
+          "${IMPROBABLE_LOG_FILE}",
           "--worker-type",
           "RustWorker",
           "receptionist",

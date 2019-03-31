@@ -1,19 +1,24 @@
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "project-example",
-    about = "A SpatialOS worker written in Rust."
+    about = "A SpatialOS worker written in Rust.",
+    rename_all = "kebab-case"
 )]
 pub struct Opt {
-    #[structopt(name = "WORKER_TYPE", long = "worker-type", short = "w")]
+    #[structopt(long, short = "w")]
     pub worker_type: String,
 
-    #[structopt(name = "WORKER_ID", long = "worker-id", short = "i")]
+    #[structopt(long, short = "i")]
     pub worker_id: Option<String>,
 
-    #[structopt(name = "POLLING_CONNECTION", long = "polling-connection", short = "p")]
+    #[structopt(long, short = "p")]
     pub connect_with_poll: bool,
+
+    #[structopt(parse(from_os_str), long, short)]
+    pub log_file: Option<PathBuf>,
 
     #[structopt(subcommand)]
     pub command: Command,

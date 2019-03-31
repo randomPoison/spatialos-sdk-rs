@@ -18,6 +18,7 @@ pub fn get_connection(opt: Opt) -> Result<WorkerConnection, String> {
         worker_id,
         connect_with_poll,
         command,
+        ..
     } = opt;
 
     let worker_id = worker_id.unwrap_or_else(|| format!("{}-{}", &worker_type, Uuid::new_v4()));

@@ -14,6 +14,8 @@ uuid = { version = "0.7", features = ["v4"] }
 structopt = "0.2.14"
 rand = "0.6.5"
 tap = "0.3.0"
+log = "0.4.6"
+simplelog = "0.5.3"
 
 [build-dependencies]
 cargo-spatial = { path = "../cargo-spatial" }

@@ -1,6 +1,8 @@
 use crate::generated_code::example;
 use crate::{connection_handler::*, opt::*};
+use log::*;
 use rand::Rng;
+use simplelog::*;
 use spatialos_sdk::{
     schema::improbable,
     worker::{
@@ -17,6 +19,7 @@ use spatialos_sdk::{
 use std::{
     collections::{BTreeMap, HashMap},
     f64,
+    fs::File,
 };
 use structopt::StructOpt;
 use tap::*;
@@ -27,12 +30,25 @@ mod opt;
 
 fn main() {
     let opt = Opt::from_args();
+
+    if let Some(log_file) = &opt.log_file {
+        CombinedLogger::init(vec![
+            TermLogger::new(LevelFilter::Warn, Config::default()).unwrap(),
+            WriteLogger::new(
+                LevelFilter::Info,
+                Config::default(),
+                File::create(log_file).expect("Unable to open worker log file"),
+            ),
+        ])
+        .unwrap();
+    }
+
     let mut worker_connection = match get_connection(opt) {
         Ok(c) => c,
         Err(e) => panic!("{}", e),
     };
 
-    println!("Connected as: {}", worker_connection.get_worker_id());
+    info!("Connected as: {}", worker_connection.get_worker_id());
 
     exercise_connection_code_paths(&mut worker_connection);
     logic_loop(&mut worker_connection);
@@ -98,7 +114,7 @@ fn logic_loop(c: &mut WorkerConnection) {
         }),
     });
     let create_request_id = c.send_create_entity_request(entity, None, None);
-    println!("Create entity request ID: {:?}", create_request_id);
+    info!("Create entity request ID: {:?}", create_request_id);
 
     loop {
         let ops = c.get_op_list(0);
@@ -106,9 +122,9 @@ fn logic_loop(c: &mut WorkerConnection) {
         // Process ops.
         for op in &ops {
             if let WorkerOp::Metrics(_) = op {
-                println!("Received metrics.");
+                trace!("Received metrics.");
             } else {
-                println!("Received op: {:?}", op);
+                trace!("Received op: {:?}", op);
             }
 
             match op {
@@ -140,7 +156,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                             .expect("Entity wasn't present in local world");
                         entity_state.rotate = Some(rotate.clone());
                     }
-                    id => println!("Received unknown component: {}", id),
+                    id => warn!("Received unknown component: {}", id),
                 },
 
                 // Track authority changes to the `Rotate` component. We only want to update
@@ -148,7 +164,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                 // need to know which entities have authoritative over.
                 WorkerOp::AuthorityChange(authority_change) => {
                     if authority_change.component_id == example::Rotate::ID {
-                        println!(
+                        trace!(
                             "Authority change for {}: {:?}",
                             c.get_worker_id(),
                             authority_change
@@ -169,7 +185,7 @@ fn logic_loop(c: &mut WorkerConnection) {
                         let rotate = state.rotate.as_mut().unwrap();
                         rotate.merge(component_update.clone());
                     }
-                    id => println!("Received unknown component: {}", id),
+                    id => warn!("Received unknown component: {}", id),
                 },
 
                 _ => {}
@@ -243,22 +259,22 @@ fn exercise_connection_code_paths(c: &mut WorkerConnection) {
     send_metrics(c);
     c.set_protocol_logging_enabled(false);
 
-    println!("Testing completed");
+    info!("Testing completed");
 }
 
 fn print_worker_attributes(connection: &WorkerConnection) {
     let attrs = connection.get_worker_attributes();
-    println!("The worker has the following attributes: ");
+    info!("The worker has the following attributes: ");
     for attr in attrs {
-        println!("{}", attr)
+        info!("{}", attr)
     }
 }
 
 fn check_for_flag(connection: &mut WorkerConnection, flag_name: &str) {
     let flag = connection.get_worker_flag(flag_name);
     match flag {
-        Some(f) => println!("Found flag value: {}", f),
-        None => println!("Could not find flag value"),
+        Some(f) => info!("Found flag value: {}", f),
+        None => info!("Could not find flag value"),
     }
 }
 
