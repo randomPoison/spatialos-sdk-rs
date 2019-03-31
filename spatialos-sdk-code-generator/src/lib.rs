@@ -101,6 +101,16 @@ pub fn generate(
                         pub struct #ident {
                             #( pub #fields ),*
                         }
+
+                        impl #spatialos_sdk::worker::component::TypeConversion for #ident {
+                            fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
+                                unimplemented!()
+                            }
+
+                            fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
+                                unimplemented!()
+                            }
+                        }
                     }
                 }
 
@@ -109,6 +119,18 @@ pub fn generate(
                     quote! {
                         #[derive(Debug, Clone)]
                         pub struct #ident(#ty_ref);
+
+                        impl #spatialos_sdk::worker::component::TypeConversion for #ident {
+                            fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
+                                Ok(#ident(
+                                    <#ty_ref as #spatialos_sdk::worker::component::TypeConversion>::from_type(input)?
+                                ))
+                            }
+
+                            fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
+                                <#ty_ref as #spatialos_sdk::worker::component::TypeConversion>::to_type(&input.0, output)
+                            }
+                        }
                     }
                 }
             };
@@ -122,8 +144,8 @@ pub fn generate(
 
                     const ID: #spatialos_sdk::worker::component::ComponentId = #component_id;
 
-                    fn from_data(_data: &#schema_component_data) -> Result<Self, String> {
-                        unimplemented!()
+                    fn from_data(data: &#schema_component_data) -> Result<Self, String> {
+                        <Self as #spatialos_sdk::worker::component::TypeConversion>::from_type(&data.fields())
                     }
 
                     fn from_update(_update: &#schema_component_update) -> Result<Self::Update, String> {
@@ -241,6 +263,16 @@ pub fn generate(
                 #[derive(Debug, Clone)]
                 pub struct #ident {
                     #( pub #fields ),*
+                }
+
+                impl #spatialos_sdk::worker::component::TypeConversion for #ident {
+                    fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
+                        unimplemented!()
+                    }
+
+                    fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
+                        unimplemented!()
+                    }
                 }
             };
 
