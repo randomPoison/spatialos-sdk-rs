@@ -430,6 +430,10 @@ impl FieldDefinition {
     pub fn quote_deserialize_impl(&self) -> TokenStream {
         unimplemented!()
     }
+
+    pub fn quote_serialize_impl(&self) -> TokenStream {
+        unimplemented!()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

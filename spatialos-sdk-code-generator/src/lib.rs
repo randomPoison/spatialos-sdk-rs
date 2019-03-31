@@ -15,9 +15,20 @@ static NESTED_ITEMS_MODULE_NAME: &str = "nested_items";
 /// generation. This struct is passed down through the code generation process so
 /// that types can easily reference each other.
 #[derive(Debug, Clone, Copy)]
+#[allow(non_snake_case)]
 pub struct Context<'a> {
     pub bundle: &'a SchemaBundleV1,
     pub dependencies: &'a HashMap<&'static str, &'static str>,
+
+    spatialos_sdk: &'a TokenStream,
+    Component: &'a TokenStream,
+    ComponentId: &'a TokenStream,
+    SchemaComponentData: &'a TokenStream,
+    SchemaComponentUpdate: &'a TokenStream,
+    SchemaCommandRequest: &'a TokenStream,
+    SchemaCommandResponse: &'a TokenStream,
+    SchemaObject: &'a TokenStream,
+    TypeConversion: &'a TokenStream,
 }
 
 /// Generates the Rust types from a bundle's schema information.
@@ -38,10 +49,6 @@ pub fn generate(
     package: &str,
     dependencies: &HashMap<&'static str, &'static str>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let context = Context {
-        bundle: bundle.v1.as_ref().ok_or("Only v1 bundle is supported")?,
-        dependencies,
-    };
     let null_span = proc_macro2::Span::call_site();
 
     let spatialos_sdk = if package == "improbable" {
@@ -63,14 +70,41 @@ pub fn generate(
 
     // Define variables for commonly-referenced types so that we don't have to type
     // out the fully-qualified paths every time.
-    let schema_component_data =
-        quote! { #spatialos_sdk::worker::internal::schema::SchemaComponentData };
-    let schema_component_update =
-        quote! { #spatialos_sdk::worker::internal::schema::SchemaComponentUpdate };
-    let schema_command_request =
-        quote! { #spatialos_sdk::worker::internal::schema::SchemaCommandRequest };
-    let schema_command_response =
-        quote! { #spatialos_sdk::worker::internal::schema::SchemaCommandResponse };
+    #[allow(non_snake_case)]
+    let Component = &quote! { #spatialos_sdk::worker::component::Component };
+    #[allow(non_snake_case)]
+    let ComponentId = &quote! { #spatialos_sdk::worker::component::ComponentId };
+    #[allow(non_snake_case)]
+    let SchemaComponentData =
+        &quote! { #spatialos_sdk::worker::internal::schema::SchemaComponentData };
+    #[allow(non_snake_case)]
+    let SchemaComponentUpdate =
+        &quote! { #spatialos_sdk::worker::internal::schema::SchemaComponentUpdate };
+    #[allow(non_snake_case)]
+    let SchemaCommandRequest =
+        &quote! { #spatialos_sdk::worker::internal::schema::SchemaCommandRequest };
+    #[allow(non_snake_case)]
+    let SchemaCommandResponse =
+        &quote! { #spatialos_sdk::worker::internal::schema::SchemaCommandResponse };
+    #[allow(non_snake_case)]
+    let SchemaObject = &quote! { #spatialos_sdk::worker::internal::schema::SchemaObject };
+    #[allow(non_snake_case)]
+    let TypeConversion = &quote! { #spatialos_sdk::worker::component::TypeConversion };
+
+    let context = Context {
+        bundle: bundle.v1.as_ref().ok_or("Only v1 bundle is supported")?,
+        dependencies,
+
+        spatialos_sdk: &spatialos_sdk,
+        Component,
+        ComponentId,
+        SchemaComponentData,
+        SchemaComponentUpdate,
+        SchemaCommandRequest,
+        SchemaCommandResponse,
+        SchemaObject,
+        TypeConversion,
+    };
 
     // Track all generated modules in a `BTreeMap` in order to get deterministic
     // iteration ordering, which is useful when doing diffs when testing.
@@ -90,7 +124,6 @@ pub fn generate(
                 ComponentDataDefinition::Inline(fields) => quote_struct(
                     &component_def.identifier,
                     &fields,
-                    &spatialos_sdk,
                     context,
                 ),
 
@@ -100,15 +133,15 @@ pub fn generate(
                         #[derive(Debug, Clone)]
                         pub struct #ident(#ty_ref);
 
-                        impl #spatialos_sdk::worker::component::TypeConversion for #ident {
-                            fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
-                                Ok(#ident(
-                                    <#ty_ref as #spatialos_sdk::worker::component::TypeConversion>::from_type(input)?
+                        impl #TypeConversion for #ident {
+                            fn from_type(input: &#SchemaObject) -> Result<Self, String> {
+                                Ok(Self(
+                                    <#ty_ref as #TypeConversion>::from_type(input)?
                                 ))
                             }
 
-                            fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
-                                <#ty_ref as #spatialos_sdk::worker::component::TypeConversion>::to_type(&input.0, output)
+                            fn to_type(input: &Self, output: &mut #SchemaObject) -> Result<(), String> {
+                                <#ty_ref as #TypeConversion>::to_type(&input.0, output)
                             }
                         }
                     }
@@ -117,42 +150,44 @@ pub fn generate(
 
             let component_id = component_def.component_id;
             let impls = quote! {
-                impl #spatialos_sdk::worker::component::Component for #ident {
+                impl #Component for #ident {
                     type Update = associated_data::#submodule_ident::Update;
                     type CommandRequest = associated_data::#submodule_ident::CommandRequest;
                     type CommandResponse = associated_data::#submodule_ident::CommandResponse;
 
-                    const ID: #spatialos_sdk::worker::component::ComponentId = #component_id;
+                    const ID: #ComponentId = #component_id;
 
-                    fn from_data(data: &#schema_component_data) -> Result<Self, String> {
-                        <Self as #spatialos_sdk::worker::component::TypeConversion>::from_type(&data.fields())
+                    fn from_data(data: &#SchemaComponentData) -> Result<Self, String> {
+                        <Self as #TypeConversion>::from_type(&data.fields())
                     }
 
-                    fn from_update(_update: &#schema_component_update) -> Result<Self::Update, String> {
+                    fn from_update(_update: &#SchemaComponentData) -> Result<Self::Update, String> {
+                        unimplemented!("Component::from_update")
+                    }
+
+                    fn from_request(_request: &#SchemaCommandRequest) -> Result<Self::CommandRequest, String> {
+                        unimplemented!("Component::from_request")
+                    }
+
+                    fn from_response(_response: &#SchemaCommandResponse) -> Result<Self::CommandResponse, String> {
+                        unimplemented!("Component::from_response")
+                    }
+
+                    fn to_data(data: &Self) -> Result<#SchemaComponentData, String> {
+                        let mut serialized_data = SchemaComponentData::new(Self::ID);
+                        <Self as #TypeConversion>::to_type(data, &mut serialized_data.fields_mut())?;
+                        Ok(serialized_data)
+                    }
+
+                    fn to_update(_update: &Self::Update) -> Result<#SchemaComponentUpdate, String> {
                         unimplemented!()
                     }
 
-                    fn from_request(_request: &#schema_command_request) -> Result<Self::CommandRequest, String> {
+                    fn to_request(_request: &Self::CommandRequest) -> Result<#SchemaCommandRequest, String> {
                         unimplemented!()
                     }
 
-                    fn from_response(_response: &#schema_command_response) -> Result<Self::CommandResponse, String> {
-                        unimplemented!()
-                    }
-
-                    fn to_data(_data: &Self) -> Result<#schema_component_data, String> {
-                        unimplemented!()
-                    }
-
-                    fn to_update(_update: &Self::Update) -> Result<#schema_component_update, String> {
-                        unimplemented!()
-                    }
-
-                    fn to_request(_request: &Self::CommandRequest) -> Result<#schema_command_request, String> {
-                        unimplemented!()
-                    }
-
-                    fn to_response(_response: &Self::CommandResponse) -> Result<#schema_command_response, String> {
+                    fn to_response(_response: &Self::CommandResponse) -> Result<#SchemaCommandResponse, String> {
                         unimplemented!()
                     }
 
@@ -166,7 +201,7 @@ pub fn generate(
                 }
 
                 impl #spatialos_sdk::worker::component::ComponentData<#ident> for #ident {
-                    fn merge(&mut self, update: <#ident as #spatialos_sdk::worker::component::Component>::Update) {
+                    fn merge(&mut self, update: <#ident as #Component>::Update) {
                         unimplemented!();
                     }
                 }
@@ -229,12 +264,8 @@ pub fn generate(
         .iter()
         .filter(|def| def.identifier.package_name() == package)
         .for_each(|type_def| {
-            let generated = quote_struct(
-                &type_def.identifier,
-                &type_def.field_definitions,
-                &spatialos_sdk,
-                context,
-            );
+            let generated =
+                quote_struct(&type_def.identifier, &type_def.field_definitions, context);
 
             let module_path = type_def.identifier.module_path();
             let module = get_submodule(&mut modules, module_path, &default_module);
@@ -256,12 +287,12 @@ pub fn generate(
                     #( #values ),*
                 }
 
-                impl #spatialos_sdk::worker::component::TypeConversion for #ident {
-                    fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
+                impl #TypeConversion for #ident {
+                    fn from_type(input: &#SchemaObject) -> Result<Self, String> {
                         unimplemented!()
                     }
 
-                    fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
+                    fn to_type(input: &Self, output: &mut #SchemaObject) -> Result<(), String> {
                         unimplemented!()
                     }
                 }
@@ -381,25 +412,30 @@ where
 fn quote_struct<'a>(
     ident: &'a Identifier,
     fields: &'a [FieldDefinition],
-    spatialos_sdk: &TokenStream,
     context: Context<'a>,
 ) -> TokenStream {
     let ident = ident.ident();
-    let fields = fields.iter().map(|field_def| field_def.quotable(context));
+    let field_defs = fields.iter().map(|field| field.quotable(context));
+    let serialize_fields = fields.iter().map(|field| field.quote_serialize_impl());
+    let deserialize_fields = fields.iter().map(|field| field.quote_deserialize_impl());
+    #[allow(non_snake_case)]
+    let TypeConversion = context.TypeConversion;
+    #[allow(non_snake_case)]
+    let SchemaObject = context.SchemaObject;
 
     quote! {
         #[derive(Debug, Clone)]
         pub struct #ident {
-            #( pub #fields ),*
+            #( pub #field_defs ),*
         }
 
-        impl #spatialos_sdk::worker::component::TypeConversion for #ident {
-            fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
-                unimplemented!()
+        impl #TypeConversion for #ident {
+            fn from_type(input: &#SchemaObject) -> Result<Self, String> {
+                #( #deserialize_fields )*
             }
 
-            fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
-                unimplemented!()
+            fn to_type(input: &Self, output: &mut #SchemaObject) -> Result<(), String> {
+                #( #serialize_fields )*
             }
         }
     }
