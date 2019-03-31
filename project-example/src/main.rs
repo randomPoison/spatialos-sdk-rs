@@ -35,7 +35,7 @@ fn main() {
         CombinedLogger::init(vec![
             TermLogger::new(LevelFilter::Warn, Config::default()).unwrap(),
             WriteLogger::new(
-                LevelFilter::Info,
+                LevelFilter::Trace,
                 Config::default(),
                 File::create(log_file).expect("Unable to open worker log file"),
             ),

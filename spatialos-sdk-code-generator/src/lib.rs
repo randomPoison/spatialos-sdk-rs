@@ -47,7 +47,18 @@ pub fn generate(
     let spatialos_sdk = if package == "improbable" {
         quote! { crate }
     } else {
+        // TODO: Handle the case that the crate renamed the `spatialos_sdk` dependency.
+        // This likely means allowing the calling code to specify the name of the
+        // `spatialos_sdk` dependency.
         quote! { spatialos_sdk }
+    };
+
+    let default_module = Module {
+        contents: quote! {
+            use #spatialos_sdk::worker::component::inventory;
+        },
+
+        modules: Default::default(),
     };
 
     // Define variables for commonly-referenced types so that we don't have to type
@@ -157,10 +168,12 @@ pub fn generate(
                         unimplemented!();
                     }
                 }
+
+                inventory::submit!(#spatialos_sdk::worker::component::VTable::new::<#ident>());
             };
 
             let module_path = component_def.identifier.module_path();
-            let module = get_submodule(&mut modules, module_path);
+            let module = get_submodule(&mut modules, module_path, &default_module);
             module.contents.append_all(struct_definition);
             module.contents.append_all(impls);
 
@@ -199,7 +212,11 @@ pub fn generate(
 
             // Put the associated data types for the component in a submodule named
             // after the component.
-            let submodule = get_submodule(&mut module.modules, std::iter::once("associated_data".into()).chain(std::iter::once(submodule_name)));
+            let submodule = get_submodule(
+                &mut module.modules,
+                std::iter::once("associated_data".into()).chain(std::iter::once(submodule_name)),
+                &default_module,
+            );
             submodule.contents.append_all(update_type);
             submodule.contents.append_all(command_types);
         });
@@ -228,7 +245,7 @@ pub fn generate(
             };
 
             let module_path = type_def.identifier.module_path();
-            let module = get_submodule(&mut modules, module_path);
+            let module = get_submodule(&mut modules, module_path, &default_module);
             module.contents.append_all(generated);
         });
 
@@ -249,7 +266,7 @@ pub fn generate(
             };
 
             let module_path = enum_def.identifier.module_path();
-            let module = get_submodule(&mut modules, module_path);
+            let module = get_submodule(&mut modules, module_path, &default_module);
             module.contents.append_all(generated);
         });
 
@@ -302,7 +319,7 @@ where
     Ok(formatted)
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct Module {
     /// The items included in the module.
     contents: TokenStream,
@@ -311,12 +328,6 @@ struct Module {
     // iterator ordering. Deterministic ordering in the generated code is useful
     // when diffing changes and debugging the generated code.
     modules: BTreeMap<String, Module>,
-}
-
-impl Module {
-    fn new(prelude: TokenStream) -> Self {
-        Default::default()
-    }
 }
 
 impl ToTokens for Module {
@@ -334,7 +345,11 @@ impl ToTokens for Module {
     }
 }
 
-fn get_submodule<'a, I, S>(modules: &'a mut BTreeMap<String, Module>, path: I) -> &'a mut Module
+fn get_submodule<'a, I, S>(
+    modules: &'a mut BTreeMap<String, Module>,
+    path: I,
+    default_module: &Module,
+) -> &'a mut Module
 where
     I: IntoIterator<Item = S>,
     S: Into<String>,
@@ -342,12 +357,17 @@ where
     // Extract the first module based on the first segment of the path.
     let mut iterator = path.into_iter();
     let first = iterator.next().expect("`path` was empty");
-    let mut module = modules.entry(first.into()).or_default();
+    let mut module = modules
+        .entry(first.into())
+        .or_insert_with(|| default_module.clone());
 
     // Iterate over the remaining segments of the path, getting or creating all
     // intermediate modules.
     for ident in iterator {
-        module = module.modules.entry(ident.into()).or_default();
+        module = module
+            .modules
+            .entry(ident.into())
+            .or_insert_with(|| default_module.clone());
     }
 
     module
