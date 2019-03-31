@@ -295,6 +295,16 @@ pub fn generate(
                 pub enum #ident {
                     #( #values ),*
                 }
+
+                impl #spatialos_sdk::worker::component::TypeConversion for #ident {
+                    fn from_type(input: &#spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<Self, String> {
+                        unimplemented!()
+                    }
+
+                    fn to_type(input: &Self, output: &mut #spatialos_sdk::worker::internal::schema::SchemaObject) -> Result<(), String> {
+                        unimplemented!()
+                    }
+                }
             };
 
             let module_path = enum_def.identifier.module_path();
