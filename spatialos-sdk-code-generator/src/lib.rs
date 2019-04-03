@@ -1,6 +1,6 @@
 use crate::schema_bundle::*;
 use heck::SnekCase;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use proc_quote::*;
 use std::collections::{BTreeMap, HashMap};
 use syn::Ident;
@@ -161,7 +161,7 @@ pub fn generate(
                         <Self as #TypeConversion>::from_type(&data.fields())
                     }
 
-                    fn from_update(_update: &#SchemaComponentData) -> Result<Self::Update, String> {
+                    fn from_update(_update: &#SchemaComponentUpdate) -> Result<Self::Update, String> {
                         unimplemented!("Component::from_update")
                     }
 
@@ -174,7 +174,7 @@ pub fn generate(
                     }
 
                     fn to_data(data: &Self) -> Result<#SchemaComponentData, String> {
-                        let mut serialized_data = SchemaComponentData::new(Self::ID);
+                        let mut serialized_data = #SchemaComponentData::new(Self::ID);
                         <Self as #TypeConversion>::to_type(data, &mut serialized_data.fields_mut())?;
                         Ok(serialized_data)
                     }
@@ -414,10 +414,14 @@ fn quote_struct<'a>(
     fields: &'a [FieldDefinition],
     context: Context<'a>,
 ) -> TokenStream {
+    let input = Ident::new("input", Span::call_site());
     let ident = ident.ident();
     let field_defs = fields.iter().map(|field| field.quotable(context));
-    let serialize_fields = fields.iter().map(|field| field.quote_serialize_impl());
-    let deserialize_fields = fields.iter().map(|field| field.quote_deserialize_impl());
+    // let serialize_fields = fields.iter().map(|field| field.quote_serialize_impl());
+    let deserialize_fields = fields
+        .iter()
+        .map(|field| field.quote_deserialize_impl(&input, context));
+    let spatialos_sdk = context.spatialos_sdk;
     #[allow(non_snake_case)]
     let TypeConversion = context.TypeConversion;
     #[allow(non_snake_case)]
@@ -430,12 +434,16 @@ fn quote_struct<'a>(
         }
 
         impl #TypeConversion for #ident {
-            fn from_type(input: &#SchemaObject) -> Result<Self, String> {
-                #( #deserialize_fields )*
+            fn from_type(#input: &#SchemaObject) -> Result<Self, String> {
+                use #spatialos_sdk::worker::internal::schema::{SchemaPrimitiveField, SchemaBytesField, SchemaStringField, SchemaObjectField};
+
+                Ok(Self {
+                    #( #deserialize_fields, )*
+                })
             }
 
             fn to_type(input: &Self, output: &mut #SchemaObject) -> Result<(), String> {
-                #( #serialize_fields )*
+                unimplemented!()
             }
         }
     }
