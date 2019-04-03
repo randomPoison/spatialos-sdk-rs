@@ -322,6 +322,15 @@ pub fn generate(
     // doesn't have rustfmt installed.
     let generated = rustfmt(raw_generated.clone()).unwrap_or(raw_generated);
 
+    // If the `RUST_SPATIALOS_CODEGEN_DEBUG` environment variable is set to "1", spit
+    // out a Rust source file containing the generated code for easier debugging.
+    let generate_debug_file = std::env::var("RUST_SPATIALOS_CODEGEN_DEBUG")
+        .map(|val| val == "1")
+        .unwrap_or(false);
+    if generate_debug_file {
+        let _ = std::fs::write(format!("{}.rs", package), &generated);
+    }
+
     Ok(generated)
 }
 
