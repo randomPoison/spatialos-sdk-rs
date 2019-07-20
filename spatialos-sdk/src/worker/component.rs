@@ -1,6 +1,7 @@
 use crate::worker::{
     handle,
     schema::{self, ComponentUpdate, SchemaObjectType},
+commands::{Request, Response},
 };
 use maybe_owned::MaybeOwned;
 use spatialos_sdk_sys::worker::*;
@@ -17,6 +18,8 @@ pub trait Component: SchemaObjectType {
     const ID: ComponentId;
 
     type Update: Update<Component = Self>;
+    type Request: Request<Component = Self>;
+    type Response: Response<Component = Self>;
 }
 
 pub trait Update: Sized {

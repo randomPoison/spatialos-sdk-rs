@@ -4,10 +4,11 @@ use std::{collections::BTreeMap, mem, slice};
 
 mod component_data;
 mod component_update;
+mod command_request;
 mod object;
 pub mod owned;
 
-pub use self::{component_data::*, component_update::*, object::*};
+pub use self::{component_data::*, component_update::*, object::*, command_request::*};
 
 pub type FieldId = u32;
 

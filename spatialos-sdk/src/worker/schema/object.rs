@@ -6,7 +6,7 @@ pub struct Object(PhantomData<*mut Schema_Object>);
 
 impl Object {
     pub(crate) unsafe fn from_raw<'a>(raw: *mut Schema_Object) -> &'a Self {
-        &*(raw as *const _)
+        &*(raw as *mut _)
     }
 
     pub(crate) unsafe fn from_raw_mut<'a>(raw: *mut Schema_Object) -> &'a mut Self {

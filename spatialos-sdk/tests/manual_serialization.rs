@@ -14,6 +14,9 @@
 //!
 //!     event NestedType nested_event;
 //!     event CoolEvent cool_event;
+//!
+//!     command CoolEvent some_command(NestedType);
+//!     command NestedType other_command(CoolEvent);
 //! }
 //!
 //! type NestedType {
@@ -27,6 +30,7 @@
 
 use spatialos_sdk::worker::{
     component::*,
+    commands::*,
     schema::{self, *},
     EntityId,
 };
@@ -70,6 +74,8 @@ impl SchemaObjectType for CustomComponent {
 impl Component for CustomComponent {
     const ID: ComponentId = 1234;
     type Update = CustomComponentUpdate;
+    type Request = CustomComponentCommandRequest;
+    type Response = CustomComponentCommandResponse;
 }
 
 #[allow(clippy::option_option)]
@@ -141,6 +147,24 @@ impl Update for CustomComponentUpdate {
             update.add_event(2, &self.cool_event);
         }
     }
+}
+
+pub enum CustomComponentCommandRequest {
+    SomeCommand(NestedType),
+    OtherCommand(CoolEvent),
+}
+
+impl Request for CustomComponentCommandRequest {
+    type Component = CustomComponent;
+}
+
+pub enum CustomComponentCommandResponse {
+    SomeCommand(CoolEvent),
+    OtherCommand(NestedType),
+}
+
+impl CommandResponse for CustomComponentCommandResponse {
+    type Component = CustomComponent;
 }
 
 #[derive(Debug, Default)]

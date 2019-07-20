@@ -1,6 +1,30 @@
-use crate::worker::query::EntityQuery;
-use crate::worker::EntityId;
+use crate::worker::{
+    component::Component,
+    query::EntityQuery,
+    schema::{CommandRequest, SchemaObjectType},
+    EntityId,
+};
 use spatialos_sdk_sys::worker::Worker_CommandParameters;
+
+pub type CommandIndex = u32;
+
+pub trait Request: Sized {
+    type Component: Component<Request = Self>;
+
+    fn from_request(request: &CommandRequest) -> Self;
+}
+
+pub trait RequestData<C: Component>: SchemaObjectType {
+    const INDEX: CommandIndex;
+}
+
+pub trait Response: Sized {
+    type Component: Component<Response = Self>;
+}
+
+pub trait ResponseData<C: Component>: SchemaObjectType {
+    const INDEX: CommandIndex;
+}
 
 /// Additional parameters for sending command requests.
 ///
@@ -54,10 +78,10 @@ impl CommandParameters {
 }
 
 #[derive(Debug)]
-pub struct IncomingCommandRequest {}
+pub struct IncomingCommandRequest;
 
 #[derive(Debug)]
-pub struct OutgoingCommandRequest {}
+pub struct OutgoingCommandRequest;
 
 // =============================== World Commands =============================== //
 #[derive(Debug)]
