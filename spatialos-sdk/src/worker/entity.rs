@@ -152,7 +152,12 @@ mod test {
     };
 
     pub struct TestComponent(Arc<AtomicBool>);
-    dummy_component!(TestComponent, TestComponentUpdate);
+    dummy_component!(
+        TestComponent,
+        TestComponentUpdate,
+        TestComponentRequest,
+        TestComponentResponse
+    );
 
     impl Drop for TestComponent {
         fn drop(&mut self) {

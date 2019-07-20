@@ -5,7 +5,7 @@ extern crate spatialos_sdk_sys;
 // internal and external tests.
 #[macro_export]
 macro_rules! dummy_component {
-    ($component:ident, $update:ident) => {
+    ($component:ident, $update:ident, $request:ident, $response:ident) => {
         impl $crate::worker::schema::SchemaObjectType for $component {
             fn from_object(_: &$crate::worker::schema::Object) -> Self {
                 unimplemented!()
@@ -19,6 +19,8 @@ macro_rules! dummy_component {
         impl $crate::worker::component::Component for $component {
             const ID: $crate::worker::component::ComponentId = 1234;
             type Update = $update;
+            type Request = $request;
+            type Response = $response;
         }
 
         inventory::submit!($crate::worker::component::VTable::new::<$component>());
@@ -35,6 +37,28 @@ macro_rules! dummy_component {
             fn into_update(&self, _: &mut $crate::worker::schema::ComponentUpdate) {
                 unimplemented!();
             }
+        }
+
+        pub struct $request;
+
+        impl $crate::worker::commands::Request for $request {
+            type Component = $component;
+
+            fn into_request(
+                &self,
+            ) -> $crate::worker::schema::owned::Owned<$crate::worker::schema::CommandRequest> {
+                unimplemented!()
+            }
+
+            fn from_request(_: &$crate::worker::schema::CommandRequest) -> Option<Self> {
+                unimplemented!()
+            }
+        }
+
+        pub struct $response;
+
+        impl $crate::worker::commands::Response for $response {
+            type Component = $component;
         }
     };
 }

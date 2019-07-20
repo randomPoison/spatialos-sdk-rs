@@ -16,6 +16,7 @@
 //!     event CoolEvent cool_event;
 //!
 //!     command CoolEvent some_command(NestedType);
+//!     command CoolEvent duplicate_command(NestedType);
 //!     command NestedType other_command(CoolEvent);
 //! }
 //!
@@ -31,7 +32,7 @@
 use spatialos_sdk::worker::{
     component::*,
     commands::*,
-    schema::{self, *},
+    schema::{self, *, owned::Owned},
     EntityId,
 };
 use std::collections::BTreeMap;
@@ -151,11 +152,35 @@ impl Update for CustomComponentUpdate {
 
 pub enum CustomComponentCommandRequest {
     SomeCommand(NestedType),
+    DuplicateCommand(NestedType),
     OtherCommand(CoolEvent),
 }
 
 impl Request for CustomComponentCommandRequest {
     type Component = CustomComponent;
+
+    fn into_request(&self) -> Owned<CommandRequest> {
+        match self {
+            CustomComponentCommandRequest::SomeCommand(request) =>
+                CommandRequest::new::<Self::Component, _>(1, request),
+
+            CustomComponentCommandRequest::DuplicateCommand(request) =>
+                CommandRequest::new::<Self::Component, _>(2, request),
+
+            CustomComponentCommandRequest::OtherCommand(request) =>
+                CommandRequest::new::<Self::Component, _>(3, request),
+        }
+    }
+
+    fn from_request(request: &CommandRequest) -> Option<Self> {
+        match request.index() {
+            1 => Some(CustomComponentCommandRequest::SomeCommand(request.deserialize())),
+            2 => Some(CustomComponentCommandRequest::DuplicateCommand(request.deserialize())),
+            3 => Some(CustomComponentCommandRequest::OtherCommand(request.deserialize())),
+
+            _ => None,
+        }
+    }
 }
 
 pub enum CustomComponentCommandResponse {
@@ -163,7 +188,7 @@ pub enum CustomComponentCommandResponse {
     OtherCommand(NestedType),
 }
 
-impl CommandResponse for CustomComponentCommandResponse {
+impl Response for CustomComponentCommandResponse {
     type Component = CustomComponent;
 }
 

@@ -1,7 +1,7 @@
 use crate::worker::{
+    commands::{Request, Response},
     handle,
     schema::{self, ComponentUpdate, SchemaObjectType},
-commands::{Request, Response},
 };
 use maybe_owned::MaybeOwned;
 use spatialos_sdk_sys::worker::*;
