@@ -185,11 +185,35 @@ impl Request for CustomComponentCommandRequest {
 
 pub enum CustomComponentCommandResponse {
     SomeCommand(CoolEvent),
+    DuplicateCommand(CoolEvent),
     OtherCommand(NestedType),
 }
 
 impl Response for CustomComponentCommandResponse {
     type Component = CustomComponent;
+
+    fn into_response(&self) -> Owned<CommandResponse> {
+        match self {
+            CustomComponentCommandResponse::SomeCommand(response) =>
+                CommandResponse::new::<Self::Component, _>(1, response),
+
+            CustomComponentCommandResponse::DuplicateCommand(response) =>
+                CommandResponse::new::<Self::Component, _>(2, response),
+
+            CustomComponentCommandResponse::OtherCommand(response) =>
+                CommandResponse::new::<Self::Component, _>(3, response),
+        }
+    }
+
+    fn from_response(response: &CommandResponse) -> Option<Self> {
+        match response.index() {
+            1 => Some(CustomComponentCommandResponse::SomeCommand(response.deserialize())),
+            2 => Some(CustomComponentCommandResponse::DuplicateCommand(response.deserialize())),
+            3 => Some(CustomComponentCommandResponse::OtherCommand(response.deserialize())),
+
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Default)]

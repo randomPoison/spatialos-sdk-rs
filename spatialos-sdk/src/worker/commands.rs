@@ -1,7 +1,7 @@
 use crate::worker::{
     component::Component,
     query::EntityQuery,
-    schema::{owned::Owned, CommandRequest},
+    schema::{owned::Owned, CommandRequest, CommandResponse},
     EntityId,
 };
 use spatialos_sdk_sys::worker::Worker_CommandParameters;
@@ -28,6 +28,10 @@ pub trait Request: Sized {
 
 pub trait Response: Sized {
     type Component: Component<Response = Self>;
+
+    fn into_response(&self) -> Owned<CommandResponse>;
+
+    fn from_response(response: &CommandResponse) -> Option<Self>;
 }
 
 /// Additional parameters for sending command requests.

@@ -59,6 +59,16 @@ macro_rules! dummy_component {
 
         impl $crate::worker::commands::Response for $response {
             type Component = $component;
+
+            fn into_response(
+                &self,
+            ) -> $crate::worker::schema::owned::Owned<$crate::worker::schema::CommandResponse> {
+                unimplemented!()
+            }
+
+            fn from_response(_: &$crate::worker::schema::CommandResponse) -> Option<Self> {
+                unimplemented!()
+            }
         }
     };
 }

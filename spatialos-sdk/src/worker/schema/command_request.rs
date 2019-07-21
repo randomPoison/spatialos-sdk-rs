@@ -1,7 +1,7 @@
 use crate::worker::{
     commands::CommandIndex,
     component::{Component, ComponentId},
-    schema::{owned::*, ArrayField, FieldId, Object, SchemaField, SchemaObjectType},
+    schema::{owned::*, Object, SchemaObjectType},
 };
 use spatialos_sdk_sys::worker::*;
 use std::marker::PhantomData;
@@ -14,7 +14,7 @@ impl CommandRequest {
         let mut result: Owned<Self> =
             unsafe { Owned::new(Schema_CreateCommandRequest(C::ID, index)) };
 
-        // Populate the command request
+        // Populate the command request.
         request.into_object(result.fields_mut());
 
         result
@@ -40,12 +40,16 @@ impl CommandRequest {
         self as *const _ as *mut _
     }
 
-    pub(crate) fn fields(&self) -> &Object {
-        unimplemented!()
+    pub fn fields(&self) -> &Object {
+        unsafe {
+            Object::from_raw(Schema_GetCommandRequestObject(self.as_ptr()))
+        }
     }
 
-    pub(crate) fn fields_mut(&mut self) -> &mut Object {
-        unimplemented!()
+    pub fn fields_mut(&mut self) -> &mut Object {
+        unsafe {
+            Object::from_raw_mut(Schema_GetCommandRequestObject(self.as_ptr()))
+        }
     }
 }
 
