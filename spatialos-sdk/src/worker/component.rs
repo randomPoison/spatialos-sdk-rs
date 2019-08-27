@@ -1,5 +1,5 @@
 use crate::worker::{
-    commands::{Request, Response},
+    commands::*,
     handle,
     schema::{self, ComponentUpdate, SchemaObjectType},
 };
@@ -147,6 +147,38 @@ impl<'a> ComponentUpdateRef<'a> {
             Some(MaybeOwned::Borrowed(component))
         } else {
             Some(MaybeOwned::Owned(self.schema_type.deserialize().unwrap()))
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct CommandRequestRef<'a> {
+    pub component_id: ComponentId,
+    pub index: CommandIndex,
+    pub schema_type: &'a schema::CommandRequest,
+    pub user_handle: *mut Worker_CommandRequestHandle,
+}
+
+impl<'a> CommandRequestRef<'a> {
+    pub unsafe fn from_raw(raw: &'a Worker_CommandRequest) -> Self {
+        Self {
+            component_id: raw.component_id,
+            index: raw.command_index,
+            schema_type: schema::CommandRequest::from_raw(raw.schema_type),
+            user_handle: raw.user_handle,
+        }
+    }
+
+    pub fn get<C: Component>(&self) -> Option<MaybeOwned<'a, C::Request>> {
+        if C::ID != self.component_id {
+            return None;
+        }
+
+        if !self.user_handle.is_null() {
+            let component = unsafe { *(self.user_handle as *const _) };
+            Some(MaybeOwned::Borrowed(component))
+        } else {
+            C::Request::from_request(self.schema_type, self.index).map(MaybeOwned::Owned)
         }
     }
 }

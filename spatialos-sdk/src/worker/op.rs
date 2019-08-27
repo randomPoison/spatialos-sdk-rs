@@ -6,7 +6,7 @@ use crate::worker::{
     entity::EntityQuery,
     internal::utils::*,
     metrics::Metrics,
-    {Authority, EntityId, LogLevel, RequestId},
+    schema, {Authority, EntityId, LogLevel, RequestId},
 };
 use maybe_owned::MaybeOwned;
 use spatialos_sdk_sys::worker::*;
@@ -106,7 +106,7 @@ pub enum WorkerOp<'a> {
     RemoveComponent(RemoveComponentOp),
     ComponentUpdate(ComponentUpdateOp<'a>),
     AuthorityChange(AuthorityChangeOp),
-    CommandRequest,
+    CommandRequest(CommandRequestOp<'a>),
     CommandResponse,
     ReserveEntityIdsResponse(ReserveEntityIdsResponseOp),
     CreateEntityResponse(CreateEntityResponseOp),
@@ -207,24 +207,24 @@ impl<'a> From<&'a Worker_Op> for WorkerOp<'a> {
                 }
 
                 Worker_OpType_WORKER_OP_TYPE_COMMAND_REQUEST => {
-                    // let op = &erased_op.command_request;
-                    // let attribute_set = cstr_array_to_vec_string(
-                    //     op.caller_attribute_set.attributes,
-                    //     op.caller_attribute_set.attribute_count,
-                    // );
+                    let op = &erased_op.command_request;
+                    let attribute_set = cstr_array_to_vec_string(
+                        op.caller_attribute_set.attributes,
+                        op.caller_attribute_set.attribute_count,
+                    );
 
-                    // let command_request_op = CommandRequestOp {
-                    //     request_id: RequestId::new(op.request_id),
-                    //     entity_id: EntityId::new(op.entity_id),
-                    //     timeout_millis: op.timeout_millis,
-                    //     caller_worker_id: cstr_to_string(op.caller_worker_id),
-                    //     caller_attribute_set: attribute_set,
-                    //     component_id: op.request.component_id,
-                    //     request: internal::CommandRequest::from(&op.request),
-                    // };
-                    // WorkerOp::CommandRequest(command_request_op)
-                    WorkerOp::CommandRequest
+                    let command_request_op = CommandRequestOp {
+                        request_id: RequestId::new(op.request_id),
+                        entity_id: EntityId::new(op.entity_id),
+                        timeout_millis: op.timeout_millis,
+                        caller_worker_id: cstr_to_string(op.caller_worker_id),
+                        caller_attribute_set: attribute_set,
+                        component_id: op.request.component_id,
+                        request: CommandRequestRef::from_raw(&op.request),
+                    };
+                    WorkerOp::CommandRequest(command_request_op)
                 }
+
                 Worker_OpType_WORKER_OP_TYPE_COMMAND_RESPONSE => {
                     // let op = &erased_op.command_response;
                     // let status_code = match Worker_StatusCode::from(op.status_code) {
@@ -572,16 +572,22 @@ impl<'a> ComponentUpdateOp<'a> {
     }
 }
 
-// #[derive(Debug)]
-// pub struct CommandRequestOp<'a> {
-//     pub request_id: RequestId<IncomingCommandRequest>,
-//     pub entity_id: EntityId,
-//     pub timeout_millis: u32,
-//     pub caller_worker_id: String,
-//     pub caller_attribute_set: Vec<String>,
-//     pub component_id: ComponentId,
-//     request: component::internal::CommandRequest<'a>,
-// }
+#[derive(Debug)]
+pub struct CommandRequestOp<'a> {
+    pub request_id: RequestId<IncomingCommandRequest>,
+    pub entity_id: EntityId,
+    pub timeout_millis: u32,
+    pub caller_worker_id: String,
+    pub caller_attribute_set: Vec<String>,
+    pub component_id: ComponentId,
+    request: CommandRequestRef<'a>,
+}
+
+impl<'a> CommandRequestOp<'a> {
+    pub fn get<C: Component>(&self) -> Option<MaybeOwned<'a, C::Request>> {
+        self.request.get::<C>()
+    }
+}
 
 // impl<'a> CommandRequestOp<'a> {
 //     pub fn get<C: Component>(&self) -> Option<&C::CommandRequest> {
