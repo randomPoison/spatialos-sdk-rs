@@ -5,13 +5,14 @@ use crate::worker::{
     EntityId,
 };
 use spatialos_sdk_sys::worker::Worker_CommandParameters;
+use spatialos_sdk_sys::worker::*;
 
-pub type CommandIndex = u32;
+pub type CommandIndex = Worker_CommandIndex;
 
 pub trait Request: Sized {
     type Component: Component<Request = Self>;
 
-    fn into_request(&self) -> Owned<CommandRequest>;
+    fn into_request(&self) -> (Owned<CommandRequest>, CommandIndex);
 
     /// Reads the request from the serialized schema data.
     ///
@@ -23,15 +24,15 @@ pub trait Request: Sized {
     /// While SpatialOS doesn't technically support having two workers with different
     /// schema definitions (which would be necessary in order to receive an unkown
     /// command), it doesn't strictly forbid it.
-    fn from_request(request: &CommandRequest) -> Option<Self>;
+    fn from_request(request: &CommandRequest, index: CommandIndex) -> Option<Self>;
 }
 
 pub trait Response: Sized {
     type Component: Component<Response = Self>;
 
-    fn into_response(&self) -> Owned<CommandResponse>;
+    fn into_response(&self) -> (Owned<CommandResponse>, CommandIndex);
 
-    fn from_response(response: &CommandResponse) -> Option<Self>;
+    fn from_response(response: &CommandResponse, index: CommandIndex) -> Option<Self>;
 }
 
 /// Additional parameters for sending command requests.

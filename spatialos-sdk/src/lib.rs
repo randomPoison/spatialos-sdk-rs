@@ -48,11 +48,17 @@ macro_rules! dummy_component {
 
             fn into_request(
                 &self,
-            ) -> $crate::worker::schema::owned::Owned<$crate::worker::schema::CommandRequest> {
+            ) -> (
+                $crate::worker::schema::owned::Owned<$crate::worker::schema::CommandRequest>,
+                $crate::worker::commands::CommandIndex,
+            ) {
                 unimplemented!()
             }
 
-            fn from_request(_: &$crate::worker::schema::CommandRequest) -> Option<Self> {
+            fn from_request(
+                _: &$crate::worker::schema::CommandRequest,
+                _: $crate::worker::commands::CommandIndex,
+            ) -> Option<Self> {
                 unimplemented!()
             }
         }
@@ -64,11 +70,17 @@ macro_rules! dummy_component {
 
             fn into_response(
                 &self,
-            ) -> $crate::worker::schema::owned::Owned<$crate::worker::schema::CommandResponse> {
+            ) -> (
+                $crate::worker::schema::owned::Owned<$crate::worker::schema::CommandResponse>,
+                $crate::worker::commands::CommandIndex,
+            ) {
                 unimplemented!()
             }
 
-            fn from_response(_: &$crate::worker::schema::CommandResponse) -> Option<Self> {
+            fn from_response(
+                _: &$crate::worker::schema::CommandResponse,
+                _: $crate::worker::commands::CommandIndex,
+            ) -> Option<Self> {
                 unimplemented!()
             }
         }

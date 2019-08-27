@@ -1,6 +1,5 @@
 use crate::worker::{
-    commands::CommandIndex,
-    component::{Component, ComponentId},
+    component::Component,
     schema::{owned::*, Object, SchemaObjectType},
 };
 use spatialos_sdk_sys::worker::*;
@@ -10,22 +9,13 @@ use std::marker::PhantomData;
 pub struct CommandResponse(PhantomData<*mut Schema_CommandResponse>);
 
 impl CommandResponse {
-    pub fn new<C: Component, R: SchemaObjectType>(index: CommandIndex, response: &R) -> Owned<Self> {
-        let mut result: Owned<Self> =
-            unsafe { Owned::new(Schema_CreateCommandResponse(C::ID, index)) };
+    pub fn new<C: Component, R: SchemaObjectType>(response: &R) -> Owned<Self> {
+        let mut result: Owned<Self> = unsafe { Owned::new(Schema_CreateCommandResponse()) };
 
         // Populate the command response.
         response.into_object(result.fields_mut());
 
         result
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        unsafe { Schema_GetCommandResponseComponentId(self.as_ptr()) }
-    }
-
-    pub fn index(&self) -> CommandIndex {
-        unsafe { Schema_GetCommandResponseCommandIndex(self.as_ptr()) }
     }
 
     pub fn deserialize<T: SchemaObjectType>(&self) -> T {
@@ -41,15 +31,11 @@ impl CommandResponse {
     }
 
     pub fn fields(&self) -> &Object {
-        unsafe {
-            Object::from_raw(Schema_GetCommandResponseObject(self.as_ptr()))
-        }
+        unsafe { Object::from_raw(Schema_GetCommandResponseObject(self.as_ptr())) }
     }
 
     pub fn fields_mut(&mut self) -> &mut Object {
-        unsafe {
-            Object::from_raw_mut(Schema_GetCommandResponseObject(self.as_ptr()))
-        }
+        unsafe { Object::from_raw_mut(Schema_GetCommandResponseObject(self.as_ptr())) }
     }
 }
 

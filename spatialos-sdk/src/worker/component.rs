@@ -12,7 +12,6 @@ use std::{collections::hash_map::HashMap, os::raw, ptr};
 pub use inventory;
 
 pub type ComponentId = Worker_ComponentId;
-pub type CommandIndex = Worker_CommandIndex;
 
 /// A component type as defined in a schema file.
 pub trait Component: SchemaObjectType {

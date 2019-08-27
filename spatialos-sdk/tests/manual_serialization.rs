@@ -159,21 +159,21 @@ pub enum CustomComponentCommandRequest {
 impl Request for CustomComponentCommandRequest {
     type Component = CustomComponent;
 
-    fn into_request(&self) -> Owned<CommandRequest> {
+    fn into_request(&self) -> (Owned<CommandRequest>, CommandIndex) {
         match self {
             CustomComponentCommandRequest::SomeCommand(request) =>
-                CommandRequest::new::<Self::Component, _>(1, request),
+                (CommandRequest::new::<Self::Component, _>(request), 1),
 
             CustomComponentCommandRequest::DuplicateCommand(request) =>
-                CommandRequest::new::<Self::Component, _>(2, request),
+                (CommandRequest::new::<Self::Component, _>(request), 2),
 
             CustomComponentCommandRequest::OtherCommand(request) =>
-                CommandRequest::new::<Self::Component, _>(3, request),
+                (CommandRequest::new::<Self::Component, _>(request), 3),
         }
     }
 
-    fn from_request(request: &CommandRequest) -> Option<Self> {
-        match request.index() {
+    fn from_request(request: &CommandRequest, index: CommandIndex) -> Option<Self> {
+        match index {
             1 => Some(CustomComponentCommandRequest::SomeCommand(request.deserialize())),
             2 => Some(CustomComponentCommandRequest::DuplicateCommand(request.deserialize())),
             3 => Some(CustomComponentCommandRequest::OtherCommand(request.deserialize())),
@@ -192,21 +192,21 @@ pub enum CustomComponentCommandResponse {
 impl Response for CustomComponentCommandResponse {
     type Component = CustomComponent;
 
-    fn into_response(&self) -> Owned<CommandResponse> {
+    fn into_response(&self) -> (Owned<CommandResponse>, CommandIndex) {
         match self {
             CustomComponentCommandResponse::SomeCommand(response) =>
-                CommandResponse::new::<Self::Component, _>(1, response),
+                (CommandResponse::new::<Self::Component, _>(response), 1),
 
             CustomComponentCommandResponse::DuplicateCommand(response) =>
-                CommandResponse::new::<Self::Component, _>(2, response),
+                (CommandResponse::new::<Self::Component, _>(response), 2),
 
             CustomComponentCommandResponse::OtherCommand(response) =>
-                CommandResponse::new::<Self::Component, _>(3, response),
+                (CommandResponse::new::<Self::Component, _>(response), 3),
         }
     }
 
-    fn from_response(response: &CommandResponse) -> Option<Self> {
-        match response.index() {
+    fn from_response(response: &CommandResponse, index: CommandIndex) -> Option<Self> {
+        match index {
             1 => Some(CustomComponentCommandResponse::SomeCommand(response.deserialize())),
             2 => Some(CustomComponentCommandResponse::DuplicateCommand(response.deserialize())),
             3 => Some(CustomComponentCommandResponse::OtherCommand(response.deserialize())),
