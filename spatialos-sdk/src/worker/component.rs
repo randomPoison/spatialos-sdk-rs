@@ -11,7 +11,8 @@ use std::{collections::hash_map::HashMap, os::raw, ptr};
 // Cargo.toml
 pub use inventory;
 
-pub type ComponentId = u32;
+pub type ComponentId = Worker_ComponentId;
+pub type CommandIndex = Worker_CommandIndex;
 
 /// A component type as defined in a schema file.
 pub trait Component: SchemaObjectType {
@@ -79,12 +80,12 @@ impl UpdateParameters {
         self.loopback = true;
     }
 
-    pub(crate) fn to_worker_sdk(&self) -> Worker_Alpha_UpdateParameters {
-        Worker_Alpha_UpdateParameters {
+    pub(crate) fn to_worker_sdk(&self) -> Worker_UpdateParameters {
+        Worker_UpdateParameters {
             loopback: if self.loopback {
-                Worker_Alpha_ComponentUpdateLoopback_WORKER_COMPONENT_UPDATE_LOOPBACK_SHORT_CIRCUITED as _
+                Worker_ComponentUpdateLoopback_WORKER_COMPONENT_UPDATE_LOOPBACK_SHORT_CIRCUITED as _
             } else {
-                Worker_Alpha_ComponentUpdateLoopback_WORKER_COMPONENT_UPDATE_LOOPBACK_NONE as _
+                Worker_ComponentUpdateLoopback_WORKER_COMPONENT_UPDATE_LOOPBACK_NONE as _
             },
         }
     }
@@ -365,6 +366,7 @@ unsafe extern "C" fn vtable_component_update_serialize<C: Component>(
 
 unsafe extern "C" fn vtable_command_request_free<C: Component>(
     _: u32,
+    _: u32,
     _: *mut raw::c_void,
     handle: *mut raw::c_void,
 ) {
@@ -372,6 +374,7 @@ unsafe extern "C" fn vtable_command_request_free<C: Component>(
 }
 
 unsafe extern "C" fn vtable_command_request_copy<C: Component>(
+    _: u32,
     _: u32,
     _: *mut raw::c_void,
     handle: *mut raw::c_void,
@@ -381,6 +384,7 @@ unsafe extern "C" fn vtable_command_request_copy<C: Component>(
 
 unsafe extern "C" fn vtable_command_request_deserialize<C: Component>(
     _: u32,
+    command_index: u32,
     _: *mut raw::c_void,
     request: *mut Schema_CommandRequest,
     handle_out: *mut *mut Worker_CommandRequestHandle,
@@ -401,6 +405,7 @@ unsafe extern "C" fn vtable_command_request_deserialize<C: Component>(
 
 unsafe extern "C" fn vtable_command_request_serialize<C: Component>(
     _: u32,
+    _: u32,
     _: *mut raw::c_void,
     handle: *mut raw::c_void,
     request: *mut *mut Schema_CommandRequest,
@@ -417,6 +422,7 @@ unsafe extern "C" fn vtable_command_request_serialize<C: Component>(
 
 unsafe extern "C" fn vtable_command_response_free<C: Component>(
     _: u32,
+    _: u32,
     _: *mut raw::c_void,
     handle: *mut raw::c_void,
 ) {
@@ -424,6 +430,7 @@ unsafe extern "C" fn vtable_command_response_free<C: Component>(
 }
 
 unsafe extern "C" fn vtable_command_response_copy<C: Component>(
+    _: u32,
     _: u32,
     _: *mut raw::c_void,
     handle: *mut raw::c_void,
@@ -433,6 +440,7 @@ unsafe extern "C" fn vtable_command_response_copy<C: Component>(
 
 unsafe extern "C" fn vtable_command_response_deserialize<C: Component>(
     _: u32,
+    command_index: u32,
     _: *mut raw::c_void,
     response: *mut Schema_CommandResponse,
     handle_out: *mut *mut Worker_CommandRequestHandle,
@@ -452,6 +460,7 @@ unsafe extern "C" fn vtable_command_response_deserialize<C: Component>(
 }
 
 unsafe extern "C" fn vtable_command_response_serialize<C: Component>(
+    _: u32,
     _: u32,
     _: *mut raw::c_void,
     handle: *mut raw::c_void,
