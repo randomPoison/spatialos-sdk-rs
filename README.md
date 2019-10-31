@@ -1,3 +1,5 @@
+> NOTE: This fork of the repository exists primarily to host the old `serialization-rewrite` and `codegen-rewrite` branches. All current work is being done in the main repository.
+
 # SpatialOS SDK for Rust
 
 [![Build Status](https://travis-ci.org/jamiebrynes7/spatialos-sdk-rs.svg?branch=master)](https://travis-ci.org/jamiebrynes7/spatialos-sdk-rs) [![dependency status](https://deps.rs/repo/github/jamiebrynes7/spatialos-sdk-rs/status.svg)](https://deps.rs/repo/github/jamiebrynes7/spatialos-sdk-rs) ![Rustc Version](https://img.shields.io/badge/rustc-1.38-blue.svg)
